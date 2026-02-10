@@ -114,11 +114,10 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
-    padding: 20px 30px;
-    font-size: 1em;
+    padding: 15px 12px;
+    font-size: 0.9em;
     text-align: left;
     border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-    white-space: nowrap;
 }
 
 /* ========================================
@@ -126,9 +125,9 @@
    ======================================== */
 
 .customer-table tbody td {
-    padding: 18px 20px;
+    padding: 12px;
     color: #d0d0d0;
-    font-size: 1em;
+    font-size: 0.95em;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
 }
