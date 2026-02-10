@@ -1,0 +1,51 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Node (frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# H2 Database files
+*.db
+*.trace.db
+*.lock.db
+
+# Build output
+*.jar
+*.war
+*.ear
+
+# Spring Boot
+spring-shell.log

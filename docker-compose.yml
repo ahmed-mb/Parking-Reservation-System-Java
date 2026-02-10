@@ -1,0 +1,29 @@
+# =============================================================================
+# Docker Compose for Parking Reservation System
+# =============================================================================
+# Usage:
+#   Demo mode:    docker compose up --build
+#   Stop:         docker compose down
+#   Rebuild:      docker compose build --no-cache
+# =============================================================================
+
+services:
+  parking-system:
+    build: .
+    container_name: parking-demo
+    ports:
+      - "3080:80"          # Access at http://localhost:3080
+    environment:
+      - SPRING_PROFILES_ACTIVE=demo
+      - JWT_SECRET=DockerDemoSecretKeyForJWTTokenGeneration2024MustBeLong!
+      - ADMIN_DEFAULT_PASSWORD=Admin@123
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      start_period: 15s
+      retries: 5
+    restart: unless-stopped
+    # Auto-stop after 15 minutes (for portfolio demo)
+    # Uncomment the next line for auto-shutdown:
+    # stop_grace_period: 5s

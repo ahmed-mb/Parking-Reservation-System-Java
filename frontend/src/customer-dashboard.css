@@ -1,0 +1,510 @@
+/* ========================================
+   CUSTOMER DASHBOARD STYLES - MATCHING ASP.NET
+   Theme: Blue/Purple Gradient (Customer Theme)
+   ======================================== */
+
+/* CSS Variables for Customer Theme */
+:root {
+    --customer-primary: #667eea;
+    --customer-secondary: #764ba2;
+    --bg-dark: rgba(10, 10, 20, 0.95);
+    --bg-darker: rgba(30, 30, 50, 0.95);
+    --text-light: #d0d0d0;
+    --text-white: #fff;
+}
+
+/* ========================================
+   NAVIGATION BAR (Customer Theme)
+   ======================================== */
+
+.customer-navbar {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95)) !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    padding: 1rem 0;
+}
+
+.customer-navbar .navbar-brand {
+    font-weight: 700;
+    font-size: 1.5em;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--customer-primary), var(--customer-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transition: all 0.3s ease;
+}
+
+.customer-navbar .navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+.customer-navbar .navbar-nav {
+    align-items: center;
+}
+
+.customer-navbar .nav-item {
+    margin: 0 8px;
+}
+
+.customer-navbar .nav-link {
+    color: var(--text-white) !important;
+    font-weight: 500;
+    padding: 0.5rem 1.5rem !important;
+    border-radius: 25px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.customer-navbar .nav-link:hover,
+.customer-navbar .nav-item.active .nav-link {
+    background: linear-gradient(135deg, var(--customer-primary), var(--customer-secondary));
+    transform: translateY(-2px);
+}
+
+/* ========================================
+   TABLE STYLING (Customer Theme)
+   ======================================== */
+
+.customer-table-container {
+    margin: 100px auto 50px;
+    padding: 0 20px;
+    max-width: 1400px;
+}
+
+.customer-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+.customer-table {
+    width: 100%;
+    min-width: 600px;
+    background: linear-gradient(135deg, rgba(10, 10, 20, 0.95), rgba(30, 30, 50, 0.95));
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    border-collapse: separate;
+    border-spacing: 0;
+    animation: fadeInUp 0.8s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   TABLE HEADERS (Blue/Purple Gradient)
+   ======================================== */
+
+.customer-table thead th {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 20px 30px;
+    font-size: 1em;
+    text-align: left;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+}
+
+/* ========================================
+   TABLE CELLS
+   ======================================== */
+
+.customer-table tbody td {
+    padding: 18px 20px;
+    color: #d0d0d0;
+    font-size: 1em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* ========================================
+   TABLE ROWS
+   ======================================== */
+
+.customer-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.customer-table tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.customer-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.customer-table tbody tr:hover td {
+    color: #fff;
+}
+
+.customer-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ========================================
+   EMPTY STATE
+   ======================================== */
+
+.customer-empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #d0d0d0;
+}
+
+.customer-empty-state p:first-child {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.customer-empty-state p:nth-child(2) {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.customer-empty-state p:last-child {
+    font-size: 0.9em;
+    color: #999;
+    opacity: 0.7;
+}
+
+/* ========================================
+   BOOKING BUTTON/FORM
+   ======================================== */
+
+.booking-container {
+    margin: 100px auto 50px;
+    padding: 0 20px;
+    max-width: 800px;
+}
+
+.booking-card {
+    background: linear-gradient(135deg, rgba(10, 10, 20, 0.95), rgba(30, 30, 50, 0.95));
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 50px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: fadeInUp 0.8s ease;
+    text-align: center;
+}
+
+.booking-card h2 {
+    color: #fff;
+    font-size: 2.5em;
+    font-weight: 700;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.booking-card p {
+    color: #d0d0d0;
+    font-size: 1.2em;
+    margin-bottom: 40px;
+    line-height: 1.6;
+}
+
+.btn-book-now {
+    padding: 18px 60px;
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-book-now:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+}
+
+.btn-book-now:active {
+    transform: translateY(-1px);
+}
+
+.btn-book-now:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ========================================
+   INFO CARD (Profile Page)
+   ======================================== */
+
+.customer-info-card {
+    background: linear-gradient(135deg, rgba(10, 10, 20, 0.95), rgba(30, 30, 50, 0.95));
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: fadeInUp 0.8s ease;
+}
+
+.customer-info-card h3 {
+    color: #fff;
+    font-size: 1.5em;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.customer-info-card .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.customer-info-card .info-row:last-child {
+    border-bottom: none;
+}
+
+.customer-info-card .info-label {
+    color: #999;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+.customer-info-card .info-value {
+    color: #fff;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+/* ========================================
+   ICON BUTTONS (Matching ASP.NET icon-buttons.css)
+   ======================================== */
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0 4px;
+    font-size: 14px;
+    color: #fff;
+    background: transparent;
+}
+
+.icon-btn:hover {
+    transform: scale(1.15);
+}
+
+.icon-btn.btn-edit {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+}
+
+.icon-btn.btn-edit:hover {
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.6);
+}
+
+.icon-btn.btn-save {
+    background: linear-gradient(135deg, #51cf66, #37b24d);
+    box-shadow: 0 3px 10px rgba(81, 207, 102, 0.4);
+}
+
+.icon-btn.btn-save:hover {
+    box-shadow: 0 5px 15px rgba(81, 207, 102, 0.6);
+}
+
+.icon-btn.btn-cancel {
+    background: linear-gradient(135deg, #868e96, #495057);
+    box-shadow: 0 3px 10px rgba(108, 117, 125, 0.4);
+}
+
+.icon-btn.btn-cancel:hover {
+    box-shadow: 0 5px 15px rgba(108, 117, 125, 0.6);
+}
+
+.icon-btn.btn-delete {
+    background: linear-gradient(135deg, #ff6b6b, #fa5252);
+    box-shadow: 0 3px 10px rgba(255, 107, 107, 0.4);
+}
+
+.icon-btn.btn-delete:hover {
+    box-shadow: 0 5px 15px rgba(255, 107, 107, 0.6);
+}
+
+/* ========================================
+   INLINE EDIT INPUT FIELDS (Matching ASP.NET user-table.css)
+   ======================================== */
+
+.customer-table input[type="text"],
+.customer-table input[type="email"],
+.customer-table input[type="tel"] {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.customer-table input[type="text"]:focus,
+.customer-table input[type="email"]:focus,
+.customer-table input[type="tel"]:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+}
+
+/* ========================================
+   BADGES
+   ======================================== */
+
+.customer-table .badge {
+    font-size: 12px;
+    padding: 6px 12px;
+    font-weight: 600;
+}
+
+/* ========================================
+   ACTION BUTTONS
+   ======================================== */
+
+.customer-table .btn {
+    transition: all 0.3s ease;
+    margin: 0 2px;
+}
+
+.customer-table .btn:hover {
+    transform: scale(1.1);
+}
+
+.customer-table .btn i {
+    font-size: 14px;
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
+
+.customer-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.customer-table-wrapper::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.customer-table-wrapper::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 10px;
+}
+
+.customer-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 991px) {
+    .customer-navbar .nav-item {
+        margin: 8px 0;
+    }
+    
+    .customer-navbar .navbar-collapse {
+        margin-top: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .customer-table-container,
+    .booking-container {
+        margin: 80px auto 30px;
+        padding: 0 10px;
+    }
+
+    .customer-table {
+        font-size: 0.85em;
+        min-width: 700px;
+    }
+
+    .customer-table thead th,
+    .customer-table tbody td {
+        padding: 12px 15px;
+    }
+
+    .booking-card {
+        padding: 30px 20px;
+    }
+
+    .booking-card h2 {
+        font-size: 2em;
+    }
+
+    .booking-card p {
+        font-size: 1em;
+    }
+}
+
+@media (max-width: 480px) {
+    .customer-table {
+        font-size: 0.75em;
+        min-width: 600px;
+    }
+
+    .customer-table thead th,
+    .customer-table tbody td {
+        padding: 8px 10px;
+    }
+
+    .customer-table .btn i {
+        font-size: 12px;
+    }
+
+    .booking-card {
+        padding: 20px 15px;
+    }
+
+    .booking-card h2 {
+        font-size: 1.8em;
+    }
+
+    .btn-book-now {
+        padding: 15px 40px;
+        font-size: 1em;
+    }
+}

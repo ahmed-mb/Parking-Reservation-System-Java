@@ -1,0 +1,317 @@
+/* ========================================
+   ADMIN PANEL STYLES - MATCHING ASP.NET
+   Theme: Pink/Red Gradient (Admin Theme)
+   ======================================== */
+
+/* CSS Variables for Admin Theme */
+:root {
+    --admin-primary: #f093fb;
+    --admin-secondary: #f5576c;
+    --bg-dark: rgba(10, 10, 20, 0.95);
+    --bg-darker: rgba(30, 30, 50, 0.95);
+    --text-light: #d0d0d0;
+    --text-white: #fff;
+}
+
+/* ========================================
+   NAVIGATION BAR (Admin Theme)
+   ======================================== */
+
+.admin-navbar {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95)) !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    padding: 1rem 0;
+}
+
+.admin-navbar .navbar-brand {
+    font-weight: 700;
+    font-size: 1.5em;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transition: all 0.3s ease;
+}
+
+.admin-navbar .navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+.admin-navbar .navbar-nav {
+    align-items: center;
+}
+
+.admin-navbar .nav-item {
+    margin: 0 8px; /* Space between nav items */
+}
+
+.admin-navbar .nav-link {
+    color: var(--text-white) !important;
+    font-weight: 500;
+    padding: 0.5rem 1.5rem !important;
+    border-radius: 25px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-block;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.admin-navbar .nav-link:hover,
+.admin-navbar .nav-item.active .nav-link {
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary));
+    transform: translateY(-2px);
+}
+
+/* ========================================
+   TABLE CONTAINER
+   ======================================== */
+
+.admin-table-container {
+    margin: 100px auto 50px;
+    padding: 0 20px;
+    max-width: 1400px;
+}
+
+/* ========================================
+   TABLE STYLING
+   ======================================== */
+
+.admin-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+.admin-table {
+    width: 100%;
+    min-width: 600px;
+    background: linear-gradient(135deg, rgba(10, 10, 20, 0.95), rgba(30, 30, 50, 0.95));
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    border-collapse: separate;
+    border-spacing: 0;
+    animation: fadeInUp 0.8s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   TABLE HEADERS
+   ======================================== */
+
+.admin-table thead th {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: #fff;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 20px 30px;
+    font-size: 1em;
+    text-align: left;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+}
+
+/* ========================================
+   TABLE CELLS
+   ======================================== */
+
+.admin-table tbody td {
+    padding: 18px 30px;
+    color: #d0d0d0;
+    font-size: 1em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* ========================================
+   TABLE ROWS
+   ======================================== */
+
+.admin-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.admin-table tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.admin-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-table tbody tr:hover td {
+    color: #fff;
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ========================================
+   INPUT FIELDS IN EDIT MODE
+   ======================================== */
+
+.admin-table input[type="text"],
+.admin-table input[type="email"],
+.admin-table input[type="number"] {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.admin-table input[type="text"]:focus,
+.admin-table input[type="email"]:focus,
+.admin-table input[type="number"]:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #f093fb;
+    outline: none;
+    box-shadow: 0 0 10px rgba(240, 147, 251, 0.3);
+}
+
+/* ========================================
+   ACTION BUTTONS
+   ======================================== */
+
+.admin-table .btn {
+    transition: all 0.3s ease;
+    margin: 0 2px;
+}
+
+.admin-table .btn:hover {
+    transform: scale(1.1);
+}
+
+.admin-table .btn i {
+    font-size: 14px;
+}
+
+/* ========================================
+   EMPTY STATE
+   ======================================== */
+
+.admin-empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #d0d0d0;
+}
+
+.admin-empty-state p:first-child {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.admin-empty-state p:nth-child(2) {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.admin-empty-state p:last-child {
+    font-size: 0.9em;
+    color: #999;
+    opacity: 0.7;
+}
+
+/* ========================================
+   BADGES
+   ======================================== */
+
+.admin-table .badge {
+    font-size: 12px;
+    padding: 6px 12px;
+    font-weight: 600;
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
+
+.admin-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    border-radius: 10px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #f5576c, #f093fb);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 1200px) {
+    .admin-table-container {
+        padding: 0 15px;
+    }
+}
+
+@media (max-width: 991px) {
+    /* Mobile navbar - stack items vertically with spacing */
+    .admin-navbar .nav-item {
+        margin: 8px 0;
+    }
+    
+    .admin-navbar .navbar-collapse {
+        margin-top: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-table-container {
+        margin: 80px auto 30px;
+        padding: 0 10px;
+    }
+
+    .admin-table {
+        font-size: 0.85em;
+        min-width: 700px;
+    }
+
+    .admin-table thead th,
+    .admin-table tbody td {
+        padding: 12px 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-table {
+        font-size: 0.75em;
+        min-width: 600px;
+    }
+
+    .admin-table thead th,
+    .admin-table tbody td {
+        padding: 8px 10px;
+    }
+
+    .admin-table .btn i {
+        font-size: 12px;
+    }
+}
