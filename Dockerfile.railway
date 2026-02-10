@@ -49,5 +49,5 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
   CMD wget -q --spider http://localhost:${PORT:-8080}/actuator/health || exit 1
 
 # Run Spring Boot with demo profile
-# Railway injects PORT as env var; Spring Boot uses server.port
-ENTRYPOINT ["java", "-Xmx256m", "-Dspring.profiles.active=demo", "-jar", "app.jar"]
+# Railway injects PORT env var; we bind to 0.0.0.0 for external access
+CMD java -Xmx400m -Dserver.address=0.0.0.0 -Dserver.port=${PORT:-8080} -Dspring.profiles.active=demo -jar app.jar
