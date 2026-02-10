@@ -2,6 +2,14 @@
 
 A parking reservation system migrated from **ASP.NET Web Forms** to **Java Spring Boot** (backend) + **React** (frontend). The Java project is a functional clone of the original ASP.NET application -- same business logic, same table designs, same UI layout and styling.
 
+## Live Demo
+
+The application is deployed on Railway: **[Live Demo](https://parking-reservation-system-java-production.up.railway.app)**
+
+**Demo Credentials:**
+- **Admin**: `admin@parking.com` / `Admin@123`
+- **Customer**: Register a new account to test the customer flow
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -86,13 +94,13 @@ Use the `prod` Spring profile with `application-prod.properties` for SQL Server 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/users/me` | Get current user profile |
-| PUT | `/api/users/{id}` | Update profile |
+| PUT | `/api/users/{id}` | Update own profile |
 | GET | `/api/parking/available` | List available spots |
 | POST | `/api/bookings` | Create booking ($6.00) |
-| POST | `/api/bookings/{id}/cancel` | Cancel booking (refund $6.00) |
-| POST | `/api/bookings/{id}/report-taken` | Report spot taken, get reassigned |
-| GET | `/api/bookings/active` | Get active bookings |
-| GET | `/api/bookings/user/{userId}` | Get booking history |
+| POST | `/api/bookings/{id}/cancel` | Cancel own booking (refund $6.00) |
+| POST | `/api/bookings/{id}/report-taken` | Report own spot taken, get reassigned |
+| GET | `/api/bookings/my-active` | Get current user's active booking |
+| GET | `/api/bookings/user/{userId}` | Get own booking history |
 
 ### Admin (JWT + Admin role required)
 | Method | Endpoint | Description |
@@ -105,18 +113,34 @@ Use the `prod` Spring profile with `application-prod.properties` for SQL Server 
 | GET | `/api/admin/parking` | List all parking spots |
 | GET | `/api/admin/parking/stats` | Parking statistics |
 
+## Docker Deployment
+
+### Local Demo (with Nginx)
+```bash
+docker-compose up --build
+# Access at http://localhost:3080
+```
+
+### Railway Deployment
+```bash
+# Push to GitHub, then deploy from Railway dashboard
+# See RAILWAY.md for detailed instructions
+```
+
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- System design, file structure, tech decisions
 - [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) -- Migration context, ASP.NET vs Java feature comparison
 - [PROGRESS.md](PROGRESS.md) -- Detailed log of the comparison audit and all fixes applied
+- [RAILWAY.md](RAILWAY.md) -- Railway deployment guide with troubleshooting
 
 ## Production Checklist
 
-- [ ] Replace JWT secret with a strong random key
+- [x] Replace JWT secret with environment variable
+- [x] Security audit (16 vulnerabilities fixed)
+- [x] IDOR protection on all endpoints
+- [x] Docker containerization
+- [x] Railway deployment
 - [ ] Replace reCAPTCHA test keys with production keys
-- [ ] Configure SQL Server connection in `application-prod.properties`
-- [ ] Set up SSL/TLS
-- [ ] Configure CORS for production domain
-- [ ] Set up logging and monitoring
-- [ ] Run security audit and load testing
+- [ ] Configure SQL Server for persistent data
+- [ ] Set up custom domain with SSL

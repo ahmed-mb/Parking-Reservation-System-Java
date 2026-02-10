@@ -536,6 +536,82 @@ See `RAILWAY.md` for complete deployment guide including:
 
 ---
 
+## Phase 9: UI/UX Improvements
+
+After Railway deployment, several UI/UX improvements were made based on testing.
+
+### Fix #16 -- Register Button Text Centering
+
+**Problem**: "CREATE ACCOUNT" text in the Register button was not centered due to conflicting CSS from `not-found.css`.
+
+**Files changed**:
+- `index.css` -- Added `display: block`, `width: 100%`, `text-align: center` to `.contact-wthree .btn-register` to override the `inline-flex` from not-found.css
+
+### Fix #17 -- Book Now Button Not Working
+
+**Problem**: Dashboard and CurrentBooking were calling `/api/bookings/active` which requires Admin role after security fixes.
+
+**Files changed**:
+- `Dashboard.jsx` -- Changed API call from `/api/bookings/active` to `/api/bookings/my-active`
+- `CurrentBooking.jsx` -- Same change
+
+### Fix #18 -- Navbar Welcome Message
+
+**Problem**: Customer navbar showed just the username instead of "Welcome {username}".
+
+**Files changed**:
+- `Dashboard.jsx` -- Changed `{userInfo?.username || 'User'}` to `Welcome {userInfo?.username || 'User'}`
+- `CurrentBooking.jsx` -- Same change
+- `BookingHistory.jsx` -- Same change
+- `UserProfile.jsx` -- Same change
+
+### Fix #19 -- Responsive Tables
+
+**Problem**: Tables required horizontal scrolling even on large screens due to fixed min-width and large padding.
+
+**Files changed**:
+- `admin-panel.css`:
+  - Container `max-width` changed from `1400px` to `95%`
+  - Removed `min-width: 600px` from tables
+  - Reduced header padding from `20px 30px` to `15px 12px`
+  - Reduced cell padding from `18px 30px` to `12px`
+  - Removed `white-space: nowrap` from headers
+  - Added `table-layout: auto` for flexible column widths
+- `customer-dashboard.css` -- Same changes applied
+
+### Fix #20 -- Parking Table Centered
+
+**Problem**: The compact 2-column parking table was aligned left instead of centered.
+
+**Files changed**:
+- `admin-panel.css` -- Added `margin: 0 auto` to `.admin-table.parking-table`
+- `AdminPanel.jsx` -- Added `parking-table` class to the View Parking table
+
+### Fix #21 -- Scrollbar Delay
+
+**Problem**: Scrollbars appeared immediately, cluttering the UI.
+
+**Files changed**:
+- `admin-panel.css` -- Scrollbar hidden by default, appears after 0.5s hover delay with smooth transition
+- `customer-dashboard.css` -- Same change applied
+
+### Fix #22 -- Table Text Centering
+
+**Problem**: Table headers and cell text were left-aligned.
+
+**Files changed**:
+- `admin-panel.css` -- Added `text-align: center` to both `thead th` and `tbody td`
+- `customer-dashboard.css` -- Same change applied
+
+### Fix #23 -- Welcome Guide Session Message
+
+**Problem**: Welcome modal mentioned "15 minutes session expiry" but deployment is always-on.
+
+**Files changed**:
+- `DemoGuide.jsx` -- Removed session timeout message from welcome text
+
+---
+
 ## Project Complete
 
 All phases of the ASP.NET to Java/React migration have been completed:
@@ -548,5 +624,6 @@ All phases of the ASP.NET to Java/React migration have been completed:
 | 6 | Security audit (16 vulnerabilities fixed) | Complete |
 | 7 | Docker demo setup (local) | Complete |
 | 8 | Railway deployment setup | Complete |
+| 9 | UI/UX improvements (8 fixes) | Complete |
 
-The application is ready for deployment to Railway as a portfolio demo.
+The application is deployed and running on Railway as a portfolio demo.
