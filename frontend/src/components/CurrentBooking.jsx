@@ -21,13 +21,11 @@ export default function CurrentBooking() {
     try {
       const [userRes, bookingsRes] = await Promise.all([
         axios.get('/api/users/me'),
-        axios.get('/api/bookings/active')
+        axios.get('/api/bookings/my-active')
       ]);
       
       setUserInfo(userRes.data);
-      // Filter to show only current user's active bookings
-      const myBookings = bookingsRes.data.filter(b => b.userName === user.username);
-      setActiveBookings(myBookings);
+      setActiveBookings(bookingsRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
@@ -73,7 +71,7 @@ export default function CurrentBooking() {
       {/* Navigation - Matching ASP.NET customer navbar */}
       <nav className="navbar navbar-expand-lg navbar-dark fixed-top customer-navbar">
         <div className="container">
-          <span className="navbar-brand">{userInfo?.username || 'User'}</span>
+          <span className="navbar-brand">Welcome {userInfo?.username || 'User'}</span>
           <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive">
             <span className="navbar-toggler-icon"></span>
           </button>
