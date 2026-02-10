@@ -70,7 +70,7 @@
 .customer-table-container {
     margin: 100px auto 50px;
     padding: 0 20px;
-    max-width: 1400px;
+    max-width: 95%;
 }
 
 .customer-table-wrapper {
@@ -82,7 +82,6 @@
 
 .customer-table {
     width: 100%;
-    min-width: 600px;
     background: linear-gradient(135deg, rgba(10, 10, 20, 0.95), rgba(30, 30, 50, 0.95));
     backdrop-filter: blur(10px);
     border-radius: 15px;
@@ -91,6 +90,7 @@
     border-collapse: separate;
     border-spacing: 0;
     animation: fadeInUp 0.8s ease;
+    table-layout: auto;
 }
 
 @keyframes fadeInUp {
@@ -459,7 +459,7 @@
 
     .customer-table {
         font-size: 0.85em;
-        min-width: 700px;
+        min-width: 600px;
     }
 
     .customer-table thead th,
@@ -483,7 +483,7 @@
 @media (max-width: 480px) {
     .customer-table {
         font-size: 0.75em;
-        min-width: 600px;
+        min-width: 500px;
     }
 
     .customer-table thead th,

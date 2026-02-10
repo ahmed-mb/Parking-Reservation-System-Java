@@ -367,7 +367,7 @@ export default function AdminPanel() {
             {/* View Parking */}
             {activeView === 'parking' && (
               <div className="admin-table-wrapper">
-                <table className="admin-table">
+                <table className="admin-table parking-table">
                   <thead>
                     <tr>
                       <th style={{fontWeight: 'bold'}}>Parking ID</th>
