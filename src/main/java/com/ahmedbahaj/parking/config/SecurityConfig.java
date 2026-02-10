@@ -45,6 +45,9 @@ public class SecurityConfig {
                 auth.requestMatchers("/api/parking/available/**", "/api/parking/available/count").permitAll();
                 auth.requestMatchers("/api/config").permitAll();
                 
+                // Actuator health endpoint (required for Railway healthcheck)
+                auth.requestMatchers("/actuator/health").permitAll();
+                
                 // Static resources (React SPA served by Spring Boot)
                 auth.requestMatchers(
                     "/", "/index.html", "/loading",
