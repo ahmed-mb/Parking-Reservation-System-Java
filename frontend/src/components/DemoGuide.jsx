@@ -7,7 +7,7 @@ const STEPS = [
     content: `This is a <strong>full-stack demo</strong> of a Parking Reservation System, 
       migrated from ASP.NET Web Forms to <strong>Java Spring Boot</strong> (backend) + <strong>React</strong> (frontend).
       <br/><br/>
-      This demo session will expire in <strong>15 minutes</strong>. Feel free to explore all features!`,
+      Feel free to explore all features!`,
     icon: 'P'
   },
   {
