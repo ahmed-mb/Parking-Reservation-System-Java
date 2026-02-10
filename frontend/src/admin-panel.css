@@ -102,6 +102,7 @@
     width: auto;
     min-width: 300px;
     max-width: 500px;
+    margin: 0 auto;
 }
 
 @keyframes fadeInUp {
@@ -247,8 +248,18 @@
 }
 
 /* ========================================
-   CUSTOM SCROLLBAR
+   CUSTOM SCROLLBAR - Hidden by default, shows on hover with delay
    ======================================== */
+
+.admin-table-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease 0.5s;
+}
+
+.admin-table-wrapper:hover {
+    scrollbar-color: rgba(240, 147, 251, 0.7) rgba(255, 255, 255, 0.1);
+}
 
 .admin-table-wrapper::-webkit-scrollbar {
     height: 8px;
@@ -260,8 +271,13 @@
 }
 
 .admin-table-wrapper::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #f093fb, #f5576c);
+    background: transparent;
     border-radius: 10px;
+    transition: background 0.3s ease 0.5s;
+}
+
+.admin-table-wrapper:hover::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
 }
 
 .admin-table-wrapper::-webkit-scrollbar-thumb:hover {
