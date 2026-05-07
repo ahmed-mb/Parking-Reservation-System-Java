@@ -1,19 +1,24 @@
 package com.ahmedbahaj.parking.exception;
 
 import com.ahmedbahaj.parking.dto.ErrorResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -147,5 +152,75 @@ class GlobalExceptionHandlerTest {
         // Should NOT expose the actual error message
         assertFalse(response.getBody().getMessage().contains("database"));
         assertEquals("An unexpected error occurred. Please try again later.", response.getBody().getMessage());
+    }
+
+    @Test
+    @DisplayName("handleConstraintViolation - returns 400 with violation list")
+    void handleConstraintViolation_shouldReturn400() {
+        // ConstraintViolationException is what @Pattern on a @PathVariable
+        // raises when the path value doesn't match. We mock the violation
+        // graph because building a real one requires the BeanValidation runtime.
+        ConstraintViolation<?> v = mock(ConstraintViolation.class);
+        when(v.getMessage()).thenReturn("must match pattern");
+        jakarta.validation.Path path = mock(jakarta.validation.Path.class);
+        when(path.toString()).thenReturn("createSpot.parkingId");
+        when(v.getPropertyPath()).thenReturn(path);
+
+        ConstraintViolationException ex = new ConstraintViolationException(Set.of(v));
+        ResponseEntity<ErrorResponse> resp = handler.handleConstraintViolation(ex, webRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals("Validation Error", resp.getBody().getError());
+        assertTrue(resp.getBody().getMessage().contains("must match pattern"));
+    }
+
+    @Test
+    @DisplayName("handleUnreadableMessage - returns 400 with generic body message")
+    void handleUnreadableMessage_shouldReturn400() {
+        // Don't pass the actual cause to the client; the upstream JSON parser
+        // exception leaks information about internal class names.
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("Internal: missing brace at line 5");
+
+        ResponseEntity<ErrorResponse> resp = handler.handleUnreadableMessage(ex, webRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals("Bad Request", resp.getBody().getError());
+        assertEquals("Request body is missing or malformed", resp.getBody().getMessage());
+        // Verify we didn't leak the upstream message.
+        assertFalse(resp.getBody().getMessage().contains("brace"));
+    }
+
+    @Test
+    @DisplayName("handleTypeMismatch - returns 400 naming the offending parameter")
+    void handleTypeMismatch_shouldReturn400() {
+        MethodArgumentTypeMismatchException ex = mock(MethodArgumentTypeMismatchException.class);
+        when(ex.getName()).thenReturn("id");
+
+        ResponseEntity<ErrorResponse> resp = handler.handleTypeMismatch(ex, webRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertTrue(resp.getBody().getMessage().contains("id"));
+    }
+
+    @Test
+    @DisplayName("handleBusinessRule (IllegalState) - returns 400 echoing the rule message")
+    void handleBusinessRule_illegalState_shouldReturn400() {
+        IllegalStateException ex = new IllegalStateException("Booking is already cancelled");
+
+        ResponseEntity<ErrorResponse> resp = handler.handleBusinessRule(ex, webRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals("Booking is already cancelled", resp.getBody().getMessage());
+    }
+
+    @Test
+    @DisplayName("handleBusinessRule (IllegalArgument) - returns 400 echoing the rule message")
+    void handleBusinessRule_illegalArgument_shouldReturn400() {
+        IllegalArgumentException ex = new IllegalArgumentException("Credit amount must be positive");
+
+        ResponseEntity<ErrorResponse> resp = handler.handleBusinessRule(ex, webRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals("Credit amount must be positive", resp.getBody().getMessage());
     }
 }

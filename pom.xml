@@ -16,7 +16,25 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- Pinned versions for plugins added in the production-readiness pass.
+             Bumping these is a deliberate operation; Dependabot will open PRs. -->
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <cyclonedx.version>2.8.0</cyclonedx.version>
+        <license.plugin.version>2.4.0</license.plugin.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Testcontainers BOM keeps mssqlserver / junit-jupiter in lock-step. -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -51,7 +69,7 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
-    
+
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -95,6 +113,24 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+
+        <!-- =================================================================
+             Test-scoped: Testcontainers for SQL Server integration tests.
+             These are pulled at compile-time of *test* code only and never
+             ship in the runtime JAR. The integration test classes are named
+             *IT.java so they bind to the failsafe / verify phase, not the
+             unit-test surefire / test phase.
+             ============================================================= -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mssqlserver</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -111,7 +147,36 @@
                     </excludes>
                 </configuration>
             </plugin>
-            <!-- JaCoCo Code Coverage Plugin -->
+
+            <!-- =============================================================
+                 Failsafe: runs integration tests (*IT.java) during the
+                 verify phase. Surefire (which is configured by the parent)
+                 continues to run *Test.java unit tests during the test phase.
+                 ========================================================= -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+
+            <!-- =============================================================
+                 JaCoCo Code Coverage. The 95% line-coverage gate is preserved
+                 from before the audit; new prod code (RateLimitingFilter,
+                 UserResponse, the new exception handlers) is covered by the
+                 tests added in this pass.
+                 ========================================================= -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -153,19 +218,111 @@
                 </executions>
                 <configuration>
                     <excludes>
-                        <!-- Exclude main application class -->
                         <exclude>**/ParkingSystemApplication.class</exclude>
-                        <!-- Exclude DTOs (simple data classes) -->
                         <exclude>**/dto/**</exclude>
-                        <!-- Exclude model classes (Lombok-generated) -->
                         <exclude>**/model/**</exclude>
-                        <!-- Exclude exception classes (simple) -->
                         <exclude>**/exception/*Exception.class</exclude>
-                        <!-- Exclude config classes that are hard to unit test -->
                         <exclude>**/config/OpenApiConfig.class</exclude>
                         <exclude>**/config/WebConfig.class</exclude>
                     </excludes>
                 </configuration>
+            </plugin>
+
+            <!-- =============================================================
+                 CycloneDX SBOM. Emits target/bom.json at the package phase
+                 listing every compile + runtime dependency with version,
+                 license, and a SHA-256 content hash. This is the artefact
+                 B2B procurement teams will request, and the input format
+                 most supply-chain scanners (Trivy, Grype, Dependency-Track)
+                 ingest natively.
+                 ========================================================= -->
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>${cyclonedx.version}</version>
+                <executions>
+                    <execution>
+                        <id>make-sbom</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>makeAggregateBom</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <projectType>application</projectType>
+                    <schemaVersion>1.5</schemaVersion>
+                    <includeBomSerialNumber>true</includeBomSerialNumber>
+                    <includeCompileScope>true</includeCompileScope>
+                    <includeProvidedScope>true</includeProvidedScope>
+                    <includeRuntimeScope>true</includeRuntimeScope>
+                    <includeSystemScope>true</includeSystemScope>
+                    <includeTestScope>false</includeTestScope>
+                    <includeLicenseText>false</includeLicenseText>
+                    <outputFormat>json</outputFormat>
+                    <outputName>bom</outputName>
+                </configuration>
+            </plugin>
+
+            <!-- =============================================================
+                 License gate. Walks the full transitive dependency tree at
+                 the verify phase and FAILS THE BUILD if anything matches a
+                 banned license. The banned set is GPL/AGPL/SSPL — licences
+                 that would force this product to be re-licensed if shipped
+                 to a paying customer.
+                 The plugin also emits target/generated-sources/license/
+                 THIRD-PARTY.txt, which is uploaded as a CI artefact for the
+                 buyer's legal review.
+                 ========================================================= -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>${license.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>aggregate-third-party-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>aggregate-add-third-party</goal>
+                        </goals>
+                        <configuration>
+                            <failIfWarning>false</failIfWarning>
+                            <failOnMissing>false</failOnMissing>
+                            <includedScopes>compile,runtime</includedScopes>
+                            <excludedScopes>test,provided,system</excludedScopes>
+                            <useMissingFile>false</useMissingFile>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>fail-on-banned-licenses</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>aggregate-download-licenses</goal>
+                        </goals>
+                        <configuration>
+                            <failOnBlacklist>true</failOnBlacklist>
+                            <licensesOutputDirectory>${project.build.directory}/third-party-licenses</licensesOutputDirectory>
+                            <licensesOutputFile>${project.build.directory}/third-party-licenses/licenses.xml</licensesOutputFile>
+                            <includedScopes>compile,runtime</includedScopes>
+                            <excludedScopes>test,provided,system</excludedScopes>
+                            <!--
+                                Regex of licence names that are banned for
+                                redistribution under a commercial sale.
+                                If a transitive dep ever pulls one in, this
+                                phase will fail at `mvn verify` time, before
+                                a release ever leaves CI.
+                            -->
+                            <excludedLicenses>
+                                <excludedLicense>GNU General Public License.*</excludedLicense>
+                                <excludedLicense>GPL.*</excludedLicense>
+                                <excludedLicense>GNU Affero General Public License.*</excludedLicense>
+                                <excludedLicense>AGPL.*</excludedLicense>
+                                <excludedLicense>Server Side Public License.*</excludedLicense>
+                                <excludedLicense>SSPL.*</excludedLicense>
+                            </excludedLicenses>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

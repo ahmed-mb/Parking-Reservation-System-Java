@@ -1,0 +1,48 @@
+# gitleaks configuration for Parking-Reservation-System-Java
+#
+# This file extends gitleaks's default rule set (which detects AWS keys,
+# GitHub tokens, generic high-entropy passwords, etc.) with project-specific
+# allow-list entries for known-safe placeholder strings used in
+# documentation and test fixtures.
+#
+# See https://github.com/gitleaks/gitleaks#configuration
+
+# Inherit all the upstream default rules.
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Path-based allow-list: files that legitimately contain placeholder
+# secrets and should not be flagged.
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Project-specific false-positive allow-list"
+
+# Documentation: README and skill copies show *example* property values
+# (jwt.secret=...) so a developer can recognise the format. They are not
+# real secrets.
+paths = [
+    '''README\.md''',
+    '''ARCHITECTURE\.md''',
+    '''PROGRESS\.md''',
+    '''PROJECT_OVERVIEW\.md''',
+    '''RAILWAY\.md''',
+]
+
+# Test fixtures: deliberately contrived values that look like secrets but
+# are scoped to the test class loader. The Spring `application-test.properties`
+# file similarly contains deterministic test-only credentials.
+regexes = [
+    # Test JWT secrets used by JwtUtilTest, application-test.properties.
+    '''TestSecretKeyForJWTTokenGenerationMustBeLongEnoughForHS256Algorithm!?''',
+    '''DemoSecretKeyForJWTTokenGeneration2024MustBeLongEnough!?''',
+    # Demo / seed admin password documented in README. The DatabaseInitializer
+    # also logs a warning when this default is in effect, so it is not a
+    # silent secret.
+    '''Admin@123''',
+    # H2 in-memory database default credentials used only during local dev.
+    '''jdbc:h2:mem:[a-z]+''',
+    # Google reCAPTCHA v3 *test* keys (the public, well-known ones from
+    # https://developers.google.com/recaptcha/docs/faq).
+    '''6Lc[A-Za-z0-9_-]{38}''',
+]

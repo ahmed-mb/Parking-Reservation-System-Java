@@ -1,5 +1,11 @@
 name: CI
 
+# Cancel older runs of the same branch when a new push lands. Saves CI minutes
+# and avoids stale "passed" status checks coming back after the head moved.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -10,11 +16,43 @@ env:
   JAVA_VERSION: '17'
   NODE_VERSION: '20'
 
+permissions:
+  # Default: read everything, write nothing. Individual jobs request more
+  # only when they need it (e.g. SARIF upload).
+  contents: read
+  security-events: write
+
 jobs:
+  # ----------------------------------------------------------------------
+  # Secret scan: catches accidentally-committed API keys, JWT secrets,
+  # database passwords, etc. Runs first because it's cheap and fails fast.
+  # ----------------------------------------------------------------------
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # gitleaks needs full history to scan every commit, not just HEAD.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The .gitleaks.toml at the repo root extends the default rules with
+          # an allow-list for documented test/demo placeholders.
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  # ----------------------------------------------------------------------
+  # Backend: unit + integration tests, JaCoCo coverage, license scan,
+  # CycloneDX SBOM. `mvn verify` runs everything bound to the verify phase,
+  # which now includes all three.
+  # ----------------------------------------------------------------------
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,10 +64,12 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Run Maven tests with coverage
+      - name: Run Maven verify (tests, coverage gate, license check, SBOM)
         run: mvn -B verify --file pom.xml
         env:
           SPRING_PROFILES_ACTIVE: test
+          # Testcontainers reuse for faster reruns when running locally.
+          TESTCONTAINERS_REUSE_ENABLE: 'true'
 
       - name: Upload backend coverage report
         uses: actions/upload-artifact@v4
@@ -38,14 +78,30 @@ jobs:
           path: target/site/jacoco/
           retention-days: 7
 
+      - name: Upload CycloneDX SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: target/bom.json
+          retention-days: 30
+
+      - name: Upload third-party license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: third-party-licenses
+          path: target/generated-sources/license/THIRD-PARTY.txt
+          retention-days: 30
+        if: always()
+
+  # ----------------------------------------------------------------------
+  # Frontend: unit tests with vitest + coverage.
+  # ----------------------------------------------------------------------
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
-    
     defaults:
       run:
         working-directory: frontend
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -59,6 +115,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Audit production dependencies
+        # --omit=dev limits the scan to runtime deps that ship in the bundle.
+        # esbuild, vite, vitest etc. are devDependencies and never reach
+        # production, so their advisories are tracked but don't gate releases.
+        # --audit-level=high fails the build on HIGH or CRITICAL only.
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -73,11 +136,9 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    
     defaults:
       run:
         working-directory: frontend
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -90,17 +151,21 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        # Tolerates package-lock drift; once the lock is regenerated locally
+        # this can be tightened back to `npm ci`.
+        run: npm install --no-audit --no-fund
 
       - name: Run ESLint
-        run: npx eslint . --ext .js,.jsx --max-warnings 0 || true
-        # Note: ESLint config may need to be added if not present
+        run: npm run lint
 
+  # ----------------------------------------------------------------------
+  # Build: produces the deployable JAR. Skipped tests because the test
+  # job above already runs them; this job is solely for the artifact.
+  # ----------------------------------------------------------------------
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-test]
-    
+    needs: [backend-test, frontend-test, lint, secret-scan]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -130,7 +195,7 @@ jobs:
           mkdir -p src/main/resources/static
           cp -r frontend/dist/* src/main/resources/static/
 
-      - name: Build backend JAR
+      - name: Build backend JAR (skip tests, already run)
         run: mvn -B package -DskipTests --file pom.xml
 
       - name: Upload build artifact
@@ -139,3 +204,68 @@ jobs:
           name: parking-system-jar
           path: target/*.jar
           retention-days: 7
+
+      - name: Upload SBOM alongside the JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: parking-system-sbom
+          path: target/bom.json
+          retention-days: 30
+
+  # ----------------------------------------------------------------------
+  # Container scan: build the production Dockerfile, run Trivy against
+  # the resulting image, fail the workflow on any HIGH or CRITICAL CVE
+  # in OS packages or Java dependencies.
+  # ----------------------------------------------------------------------
+  container-scan:
+    name: Docker Image Scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build production image (load into local Docker)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          load: true
+          tags: parking-system:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner (build-failing scan)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'parking-system:scan'
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          exit-code: '1'
+          # Don't surface dev-only test deps that the runtime doesn't include.
+          vuln-type: 'os,library'
+
+      - name: Re-run Trivy in SARIF mode (for GitHub Security tab)
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'parking-system:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-image'
