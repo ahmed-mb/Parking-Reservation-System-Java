@@ -1,5 +1,7 @@
 package com.ahmedbahaj.parking.controller;
 
+import com.ahmedbahaj.parking.dto.UserResponse;
+import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
 import com.ahmedbahaj.parking.model.Booking;
 import com.ahmedbahaj.parking.model.Parking;
 import com.ahmedbahaj.parking.model.User;
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -31,44 +34,46 @@ public class AdminController {
     // ========== USER MANAGEMENT ==========
 
     @GetMapping("/users")
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
+        // DTO mapping prevents accidental leakage of password hashes or other
+        // internal columns if someone later removes the @JsonIgnore on User.
+        return ResponseEntity.ok(userRepository.findAll().stream()
+                .map(UserResponse::from)
+                .collect(Collectors.toList()));
     }
 
     @GetMapping("/users/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable Integer id) {
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Integer id) {
         return userRepository.findById(id)
+                .map(UserResponse::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/users/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Integer id, @RequestBody User user) {
-        try {
-            return ResponseEntity.ok(userService.updateUser(id, user));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Integer id, @RequestBody User user) {
+        // No try/catch: ResourceNotFoundException, DuplicateEmailException,
+        // etc. flow through GlobalExceptionHandler and produce the right
+        // status code and JSON envelope automatically.
+        return ResponseEntity.ok(UserResponse.from(userService.updateUser(id, user)));
     }
 
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
-        try {
-            userRepository.deleteById(id);
-            return ResponseEntity.ok("User deleted successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+    public ResponseEntity<String> deleteUser(@PathVariable Integer id) {
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("User not found: " + id);
         }
+        userRepository.deleteById(id);
+        return ResponseEntity.ok("User deleted successfully");
     }
 
     @PostMapping("/users/{id}/credit")
-    public ResponseEntity<?> addCreditToUser(@PathVariable Integer id, @RequestParam BigDecimal amount) {
-        try {
-            userService.addCredit(id, amount);
-            return ResponseEntity.ok("Credit added successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+    public ResponseEntity<String> addCreditToUser(@PathVariable Integer id, @RequestParam BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Credit amount must be positive");
         }
+        userService.addCredit(id, amount);
+        return ResponseEntity.ok("Credit added successfully");
     }
 
     // ========== BOOKING MANAGEMENT ==========
@@ -89,41 +94,37 @@ public class AdminController {
     }
 
     @DeleteMapping("/bookings/{id}")
-    public ResponseEntity<?> deleteBooking(@PathVariable Integer id) {
-        try {
-            Booking booking = bookingRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Booking not found"));
+    public ResponseEntity<String> deleteBooking(@PathVariable Integer id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
-            String status = booking.getStatus();
-            boolean isActive = status == null || "Active".equalsIgnoreCase(status);
-            String userName = booking.getUserName();
-            boolean isKnownUser = userName != null && !"Unknown".equalsIgnoreCase(userName)
-                                  && booking.getUserId() != null && booking.getUserId() > 0;
+        String status = booking.getStatus();
+        boolean isActive = status == null || "Active".equalsIgnoreCase(status);
+        String userName = booking.getUserName();
+        boolean isKnownUser = userName != null && !"Unknown".equalsIgnoreCase(userName)
+                              && booking.getUserId() != null && booking.getUserId() > 0;
 
-            // Refund credit only for active bookings with known users
-            if (isActive && isKnownUser) {
-                userRepository.findById(booking.getUserId()).ifPresent(user -> {
-                    user.setCredit(user.getCredit().add(new BigDecimal("6.00")));
-                    userRepository.save(user);
-                });
-            }
-
-            // Release parking spot if booked or unknown
-            if (booking.getParkingSpot() != null) {
-                parkingRepository.findById(booking.getParkingSpot()).ifPresent(parking -> {
-                    String avail = parking.getAvailability();
-                    if ("booked".equalsIgnoreCase(avail) || "unknown".equalsIgnoreCase(avail)) {
-                        parking.setAvailability("available");
-                        parkingRepository.save(parking);
-                    }
-                });
-            }
-
-            bookingRepository.deleteById(id);
-            return ResponseEntity.ok("Booking deleted successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        // Refund credit only for active bookings with known users.
+        if (isActive && isKnownUser) {
+            userRepository.findById(booking.getUserId()).ifPresent(user -> {
+                user.setCredit(user.getCredit().add(new BigDecimal("6.00")));
+                userRepository.save(user);
+            });
         }
+
+        // Release the parking spot if it was booked or marked unknown.
+        if (booking.getParkingSpot() != null) {
+            parkingRepository.findById(booking.getParkingSpot()).ifPresent(parking -> {
+                String avail = parking.getAvailability();
+                if ("booked".equalsIgnoreCase(avail) || "unknown".equalsIgnoreCase(avail)) {
+                    parking.setAvailability("available");
+                    parkingRepository.save(parking);
+                }
+            });
+        }
+
+        bookingRepository.deleteById(id);
+        return ResponseEntity.ok("Booking deleted successfully");
     }
 
     // ========== PARKING MANAGEMENT ==========

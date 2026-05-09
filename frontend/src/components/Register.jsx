@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { useModernAlert } from './ModernAlert';
 import { useDemoMode } from '../App';
@@ -43,7 +43,11 @@ export default function Register() {
         recaptchaToken = await executeRecaptcha('register');
       }
       
-      const { confirmPassword, ...registrationData } = formData;
+      // Strip confirmPassword before posting; the rename to _confirmPassword
+      // satisfies ESLint's "unused var" rule (allowed prefix is `_`) while
+      // keeping the field out of the API payload.
+      // eslint-disable-next-line no-unused-vars
+      const { confirmPassword: _confirmPassword, ...registrationData } = formData;
       await axios.post('/api/users/register', {
         ...registrationData,
         recaptchaToken

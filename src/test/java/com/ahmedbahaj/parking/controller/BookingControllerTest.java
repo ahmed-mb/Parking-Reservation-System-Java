@@ -1,6 +1,9 @@
 package com.ahmedbahaj.parking.controller;
 
 import com.ahmedbahaj.parking.dto.BookingRequest;
+import com.ahmedbahaj.parking.exception.InsufficientCreditException;
+import com.ahmedbahaj.parking.exception.ParkingNotAvailableException;
+import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
 import com.ahmedbahaj.parking.model.Booking;
 import com.ahmedbahaj.parking.model.User;
 import com.ahmedbahaj.parking.repository.BookingRepository;
@@ -148,9 +151,12 @@ class BookingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/bookings - error handling")
+    @DisplayName("POST /api/bookings - insufficient credit yields 400")
     @WithMockUser(username = "test@example.com", authorities = {"Customer"})
-    void createBooking_withError_shouldReturnBadRequest() throws Exception {
+    void createBooking_withInsufficientCredit_shouldReturnBadRequest() throws Exception {
+        // After the audit fix, controllers no longer wrap exceptions in a
+        // generic 400. Specific business exceptions are mapped by
+        // GlobalExceptionHandler — InsufficientCreditException -> 400.
         BookingRequest request = new BookingRequest();
         request.setUserId(1);
         request.setParkingId("A-001");
@@ -158,7 +164,7 @@ class BookingControllerTest {
 
         when(userService.getUserByEmail("test@example.com")).thenReturn(testUser);
         when(bookingService.createBooking(1, "A-001", "ABC123"))
-            .thenThrow(new RuntimeException("Insufficient credit"));
+            .thenThrow(new InsufficientCreditException("Insufficient credit"));
 
         mockMvc.perform(post("/api/bookings")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -195,14 +201,16 @@ class BookingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/bookings/{id}/cancel - booking not found")
+    @DisplayName("POST /api/bookings/{id}/cancel - booking not found yields 404")
     @WithMockUser(username = "test@example.com", authorities = {"Customer"})
-    void cancelBooking_notFound_shouldReturnBadRequest() throws Exception {
+    void cancelBooking_notFound_shouldReturn404() throws Exception {
+        // Controller now throws ResourceNotFoundException, which the
+        // GlobalExceptionHandler maps to 404 (was incorrectly 400 before).
         when(userService.getUserByEmail("test@example.com")).thenReturn(testUser);
         when(bookingRepository.findById(999)).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/bookings/999/cancel"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -218,12 +226,14 @@ class BookingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/bookings/{id}/cancel - error handling")
+    @DisplayName("POST /api/bookings/{id}/cancel - business-rule failure yields 400")
     @WithMockUser(username = "test@example.com", authorities = {"Customer"})
-    void cancelBooking_withError_shouldReturnBadRequest() throws Exception {
+    void cancelBooking_alreadyCancelled_shouldReturnBadRequest() throws Exception {
+        // IllegalStateException now maps cleanly to 400 via GlobalExceptionHandler.
         when(userService.getUserByEmail("test@example.com")).thenReturn(testUser);
         when(bookingRepository.findById(1)).thenReturn(Optional.of(testBooking));
-        doThrow(new RuntimeException("Cancel failed")).when(bookingService).cancelBooking(1);
+        doThrow(new IllegalStateException("Booking is already cancelled or completed"))
+            .when(bookingService).cancelBooking(1);
 
         mockMvc.perform(post("/api/bookings/1/cancel"))
                 .andExpect(status().isBadRequest());
@@ -252,14 +262,16 @@ class BookingControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/bookings/user/{userId} - error handling")
+    @DisplayName("GET /api/bookings/user/{userId} - missing user yields 404")
     @WithMockUser(username = "test@example.com", authorities = {"Customer"})
-    void getUserBookings_withError_shouldReturnBadRequest() throws Exception {
+    void getUserBookings_missingUser_shouldReturnNotFound() throws Exception {
+        // Resource lookup failures now travel as ResourceNotFoundException -> 404
+        // instead of being squashed into a 400 with an internal message.
         when(userService.getUserByEmail("test@example.com"))
-            .thenThrow(new RuntimeException("Error"));
+            .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(get("/api/bookings/user/1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -294,14 +306,14 @@ class BookingControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/bookings/my-active - error handling")
+    @DisplayName("GET /api/bookings/my-active - missing user yields 404")
     @WithMockUser(username = "test@example.com", authorities = {"Customer"})
-    void getMyActiveBooking_withError_shouldReturnBadRequest() throws Exception {
+    void getMyActiveBooking_missingUser_shouldReturnNotFound() throws Exception {
         when(userService.getUserByEmail("test@example.com"))
-            .thenThrow(new RuntimeException("Error"));
+            .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(get("/api/bookings/my-active"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -336,14 +348,18 @@ class BookingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/bookings/{id}/report-taken - error handling")
+    @DisplayName("POST /api/bookings/{id}/report-taken - no spots yields 409")
     @WithMockUser(username = "test@example.com", authorities = {"Customer"})
-    void reportSpotTaken_withError_shouldReturnBadRequest() throws Exception {
+    void reportSpotTaken_noSpotsAvailable_shouldReturnConflict() throws Exception {
+        // ParkingNotAvailableException maps to 409 Conflict in
+        // GlobalExceptionHandler — semantically correct for an out-of-resources
+        // condition.
         when(userService.getUserByEmail("test@example.com")).thenReturn(testUser);
         when(bookingRepository.findById(1)).thenReturn(Optional.of(testBooking));
-        when(bookingService.reportSpotTaken(1)).thenThrow(new RuntimeException("No spots"));
+        when(bookingService.reportSpotTaken(1))
+            .thenThrow(new ParkingNotAvailableException("No available parking spots"));
 
         mockMvc.perform(post("/api/bookings/1/report-taken"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 }

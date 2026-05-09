@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -10,21 +10,17 @@ export default function Dashboard() {
   const [activeBookings, setActiveBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
-  const { user, logout } = useAuth();
+  // Only `logout` is needed for the navbar; `user` was a dead destructure.
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const modernAlert = useModernAlert();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [userRes, bookingsRes] = await Promise.all([
         axios.get('/api/users/me'),
-        axios.get('/api/bookings/my-active')
+        axios.get('/api/bookings/my-active'),
       ]);
-      
       setUserInfo(userRes.data);
       setActiveBookings(bookingsRes.data);
     } catch (err) {
@@ -32,7 +28,11 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleBookNow = async () => {
     if (!userInfo) return;

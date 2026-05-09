@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -17,11 +17,9 @@ export default function AdminPanel() {
   const navigate = useNavigate();
   const modernAlert = useModernAlert();
 
-  useEffect(() => {
-    fetchData();
-  }, [activeView]);
-
-  const fetchData = async () => {
+  // useCallback so the function identity is stable per `activeView`,
+  // letting useEffect depend on it without re-running on every render.
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       if (activeView === 'users') {
@@ -39,7 +37,11 @@ export default function AdminPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeView]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleEditUser = (user) => {
     setEditingUserId(user.id);

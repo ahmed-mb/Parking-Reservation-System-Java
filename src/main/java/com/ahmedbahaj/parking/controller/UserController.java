@@ -3,6 +3,7 @@ package com.ahmedbahaj.parking.controller;
 import com.ahmedbahaj.parking.dto.LoginRequest;
 import com.ahmedbahaj.parking.dto.LoginResponse;
 import com.ahmedbahaj.parking.dto.RegisterRequest;
+import com.ahmedbahaj.parking.dto.UserResponse;
 import com.ahmedbahaj.parking.model.User;
 import com.ahmedbahaj.parking.repository.UserRepository;
 import com.ahmedbahaj.parking.service.UserService;
@@ -10,12 +11,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -25,113 +28,79 @@ public class UserController {
     private final UserRepository userRepository;
     private final UserService userService;
 
-    /**
-     * Get all users - ADMIN ONLY
-     * Security: Requires Admin role to prevent user enumeration
-     */
+    /** Admin-only listing of customers, returned as DTOs (never raw entities). */
     @GetMapping
     @PreAuthorize("hasAuthority('Admin')")
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(UserResponse::from)
+                .collect(Collectors.toList());
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest request) {
-        try {
-            User user = userService.register(request);
-            return ResponseEntity.ok(user);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<UserResponse> registerUser(@Valid @RequestBody RegisterRequest request) {
+        User created = userService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(created));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            LoginResponse response = userService.login(request);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(401).body(e.getMessage());
-        }
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(userService.login(request));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
-        try {
-            User user = userService.getUserByEmail(authentication.getName());
-            return ResponseEntity.ok(user);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
+        User user = userService.getUserByEmail(authentication.getName());
+        return ResponseEntity.ok(UserResponse.from(user));
     }
 
     /**
-     * Update user profile
-     * Security: Users can only update their OWN profile, unless Admin
+     * Update a user profile. The authenticated user can update only their own
+     * record; only Admins may update someone else. Credit is admin-only.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(
+    public ResponseEntity<UserResponse> updateUser(
             @PathVariable Integer id,
             @RequestBody User user,
             Authentication authentication) {
-        try {
-            User currentUser = userService.getUserByEmail(authentication.getName());
-            
-            // Security check: Only allow users to update their own profile, or Admin can update anyone
-            if (!currentUser.getId().equals(id) && !"Admin".equals(currentUser.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body("You can only update your own profile");
-            }
-            
-            // Prevent non-admins from updating credit through this endpoint
-            if (!"Admin".equals(currentUser.getRole())) {
-                user.setCredit(null); // Will be ignored in service
-            }
-            
-            return ResponseEntity.ok(userService.updateUser(id, user));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        User currentUser = userService.getUserByEmail(authentication.getName());
+
+        if (!currentUser.getId().equals(id) && !"Admin".equals(currentUser.getRole())) {
+            throw new AccessDeniedException("You can only update your own profile");
         }
+
+        // Defence-in-depth: blank out fields that customers must not be able
+        // to mutate via this endpoint. The service additionally enforces this
+        // server-side, but stripping them here means the inbound payload is
+        // never trusted.
+        if (!"Admin".equals(currentUser.getRole())) {
+            user.setCredit(null);
+            user.setRole(null);
+        }
+
+        return ResponseEntity.ok(UserResponse.from(userService.updateUser(id, user)));
     }
 
-    /**
-     * Add credit to user account - ADMIN ONLY
-     * Security: Only admins can add credit to prevent fraud
-     */
+    /** Admin-only credit top-up. */
     @PostMapping("/{id}/credit")
     @PreAuthorize("hasAuthority('Admin')")
-    public ResponseEntity<?> addCredit(@PathVariable Integer id, @RequestParam BigDecimal amount) {
-        try {
-            // Validate amount is positive
-            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-                return ResponseEntity.badRequest().body("Credit amount must be positive");
-            }
-            userService.addCredit(id, amount);
-            return ResponseEntity.ok("Credit added successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+    public ResponseEntity<String> addCredit(@PathVariable Integer id, @RequestParam BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Credit amount must be positive");
         }
+        userService.addCredit(id, amount);
+        return ResponseEntity.ok("Credit added successfully");
     }
 
-    /**
-     * Delete user - ADMIN ONLY
-     * Security: Only admins can delete users
-     */
+    /** Admin-only delete. Admins cannot delete themselves. */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('Admin')")
-    public ResponseEntity<?> deleteUser(@PathVariable Integer id, Authentication authentication) {
-        try {
-            User currentUser = userService.getUserByEmail(authentication.getName());
-            
-            // Prevent admin from deleting themselves
-            if (currentUser.getId().equals(id)) {
-                return ResponseEntity.badRequest().body("Cannot delete your own account");
-            }
-            
-            userRepository.deleteById(id);
-            return ResponseEntity.ok("User deleted successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+    public ResponseEntity<String> deleteUser(@PathVariable Integer id, Authentication authentication) {
+        User currentUser = userService.getUserByEmail(authentication.getName());
+        if (currentUser.getId().equals(id)) {
+            throw new IllegalStateException("Cannot delete your own account");
         }
+        userRepository.deleteById(id);
+        return ResponseEntity.ok("User deleted successfully");
     }
 }

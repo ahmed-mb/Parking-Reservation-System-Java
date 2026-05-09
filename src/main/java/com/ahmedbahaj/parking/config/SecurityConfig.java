@@ -1,6 +1,7 @@
 package com.ahmedbahaj.parking.config;
 
 import com.ahmedbahaj.parking.security.JwtAuthenticationFilter;
+import com.ahmedbahaj.parking.security.RateLimitingFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +28,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
     @Value("${spring.h2.console.enabled:false}")
     private boolean h2ConsoleEnabled;
@@ -78,7 +80,24 @@ public class SecurityConfig {
                 } else {
                     headers.frameOptions(frame -> frame.deny());
                 }
+                // Force HTTPS for one year, including subdomains. Safe even when
+                // running behind Railway/Nginx because the proxy strips the header
+                // for HTTP-only access.
+                headers.httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31_536_000L));
+                // Defence-in-depth: deny MIME sniffing and referrer leakage.
+                headers.contentTypeOptions(contentTypeOptions -> {});
+                headers.referrerPolicy(referrer -> referrer
+                    .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                // Restrict permissions and isolate the page from cross-origin embeds.
+                headers.crossOriginOpenerPolicy(coop -> coop.policy(
+                    org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN));
+                headers.crossOriginResourcePolicy(corp -> corp.policy(
+                    org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_SITE));
             })
+            // Rate-limit auth endpoints first, then validate any Bearer JWT.
+            .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -117,8 +136,16 @@ public class SecurityConfig {
         return source;
     }
 
+    /**
+     * BCrypt password encoder with cost factor 12.
+     * <p>
+     * Cost 12 (~250 ms per hash on modern hardware) is the OWASP-recommended
+     * minimum for new applications. The default constructor uses cost 10, which
+     * is too fast for offline brute-force resistance. Existing hashes remain
+     * verifiable because BCrypt embeds the cost in the stored hash.
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 }

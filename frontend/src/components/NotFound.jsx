@@ -15,9 +15,9 @@ export default function NotFound() {
         {/* Error Message */}
         <h1 className="error-title">Oops! Parking Spot Not Found</h1>
         <p className="error-description">
-          The page you're looking for seems to have been relocated to a different parking zone.
+          The page you&apos;re looking for seems to have been relocated to a different parking zone.
           <br />
-          Don't worry, we'll help you find your way back!
+          Don&apos;t worry, we&apos;ll help you find your way back!
         </p>
 
         {/* Action Buttons */}

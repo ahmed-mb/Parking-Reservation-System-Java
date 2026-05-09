@@ -1,5 +1,6 @@
 package com.ahmedbahaj.parking.controller;
 
+import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
 import com.ahmedbahaj.parking.model.Booking;
 import com.ahmedbahaj.parking.model.Parking;
 import com.ahmedbahaj.parking.model.User;
@@ -130,22 +131,25 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/admin/users/{id} - update fails")
+    @DisplayName("PUT /api/admin/users/{id} - missing user yields 404")
     @WithMockUser(authorities = {"Admin"})
-    void updateUser_fails_shouldReturnBadRequest() throws Exception {
+    void updateUser_missing_shouldReturnNotFound() throws Exception {
+        // After the audit fix, AdminController no longer wraps the call in a
+        // catch-all. Specific exceptions flow through GlobalExceptionHandler.
         when(userService.updateUser(eq(1), any(User.class)))
-            .thenThrow(new RuntimeException("Update failed"));
+            .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(put("/api/admin/users/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(testUser)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
     @DisplayName("DELETE /api/admin/users/{id} - delete user")
     @WithMockUser(authorities = {"Admin"})
     void deleteUser_shouldReturnSuccess() throws Exception {
+        when(userRepository.existsById(1)).thenReturn(true);
         doNothing().when(userRepository).deleteById(1);
 
         mockMvc.perform(delete("/api/admin/users/1"))
@@ -154,13 +158,15 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/admin/users/{id} - delete fails")
+    @DisplayName("DELETE /api/admin/users/{id} - missing user yields 404")
     @WithMockUser(authorities = {"Admin"})
-    void deleteUser_fails_shouldReturnBadRequest() throws Exception {
-        doThrow(new RuntimeException("Delete failed")).when(userRepository).deleteById(999);
+    void deleteUser_missing_shouldReturnNotFound() throws Exception {
+        // Controller now performs an existence check first and throws
+        // ResourceNotFoundException, mapped to 404 by GlobalExceptionHandler.
+        when(userRepository.existsById(999)).thenReturn(false);
 
         mockMvc.perform(delete("/api/admin/users/999"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -176,14 +182,15 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/admin/users/{id}/credit - add credit fails")
+    @DisplayName("POST /api/admin/users/{id}/credit - missing user yields 404")
     @WithMockUser(authorities = {"Admin"})
-    void addCreditToUser_fails_shouldReturnBadRequest() throws Exception {
-        doThrow(new RuntimeException("User not found")).when(userService).addCredit(eq(999), any(BigDecimal.class));
+    void addCreditToUser_missing_shouldReturnNotFound() throws Exception {
+        doThrow(new ResourceNotFoundException("User not found"))
+            .when(userService).addCredit(eq(999), any(BigDecimal.class));
 
         mockMvc.perform(post("/api/admin/users/999/credit")
                 .param("amount", "10.00"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -265,13 +272,16 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/admin/bookings/{id} - booking not found")
+    @DisplayName("DELETE /api/admin/bookings/{id} - booking not found yields 404")
     @WithMockUser(authorities = {"Admin"})
-    void deleteBooking_notFound_shouldReturnBadRequest() throws Exception {
+    void deleteBooking_notFound_shouldReturnNotFound() throws Exception {
+        // After the audit fix, AdminController throws ResourceNotFoundException
+        // (mapped to 404) instead of returning a generic 400 with the
+        // exception message echoed in the body.
         when(bookingRepository.findById(999)).thenReturn(Optional.empty());
 
         mockMvc.perform(delete("/api/admin/bookings/999"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test

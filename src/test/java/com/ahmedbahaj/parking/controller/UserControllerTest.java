@@ -3,7 +3,9 @@ package com.ahmedbahaj.parking.controller;
 import com.ahmedbahaj.parking.dto.LoginRequest;
 import com.ahmedbahaj.parking.dto.LoginResponse;
 import com.ahmedbahaj.parking.dto.RegisterRequest;
+import com.ahmedbahaj.parking.exception.DuplicateEmailException;
 import com.ahmedbahaj.parking.exception.InvalidCredentialsException;
+import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
 import com.ahmedbahaj.parking.model.User;
 import com.ahmedbahaj.parking.repository.UserRepository;
 import com.ahmedbahaj.parking.service.UserService;
@@ -121,10 +123,14 @@ class UserControllerTest {
 
         when(userService.register(any(RegisterRequest.class))).thenReturn(testUser);
 
+        // After the audit fix, /api/users/register returns 201 Created and a
+        // UserResponse DTO (no password hash, no other internal columns).
         mockMvc.perform(post("/api/users/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.email").value("test@example.com"));
     }
 
     @Test
@@ -136,13 +142,14 @@ class UserControllerTest {
         request.setPassword("Password@123");
         request.setRecaptchaToken("valid-token");
 
+        // DuplicateEmailException maps to 409 Conflict, not a generic 400.
         when(userService.register(any(RegisterRequest.class)))
-            .thenThrow(new RuntimeException("Email already exists"));
+            .thenThrow(new DuplicateEmailException("Email already exists"));
 
         mockMvc.perform(post("/api/users/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -157,14 +164,14 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/users/me - error handling")
+    @DisplayName("GET /api/users/me - missing user yields 404")
     @WithMockUser(username = "notfound@example.com", authorities = {"Customer"})
-    void getCurrentUser_notFound_shouldReturnBadRequest() throws Exception {
+    void getCurrentUser_notFound_shouldReturnNotFound() throws Exception {
         when(userService.getUserByEmail("notfound@example.com"))
-            .thenThrow(new RuntimeException("User not found"));
+            .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(get("/api/users/me"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -235,20 +242,20 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/users/{id} - error handling")
+    @DisplayName("PUT /api/users/{id} - missing target user yields 404")
     @WithMockUser(username = "test@example.com", authorities = {"Customer"})
-    void updateUser_withError_shouldReturnBadRequest() throws Exception {
+    void updateUser_missingUser_shouldReturnNotFound() throws Exception {
         User updatedUser = new User();
         updatedUser.setUsername("updated");
 
         when(userService.getUserByEmail("test@example.com")).thenReturn(testUser);
         when(userService.updateUser(eq(1), any(User.class)))
-            .thenThrow(new RuntimeException("Update failed"));
+            .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(put("/api/users/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updatedUser)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -264,34 +271,37 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/users/{id}/credit - negative amount rejected")
+    @DisplayName("POST /api/users/{id}/credit - negative amount rejected (JSON envelope)")
     @WithMockUser(username = "admin@example.com", authorities = {"Admin"})
     void addCredit_negativeAmount_shouldReturnBadRequest() throws Exception {
+        // Validation failure now flows through GlobalExceptionHandler and
+        // returns a structured ErrorResponse JSON, not a raw string body.
         mockMvc.perform(post("/api/users/1/credit")
                 .param("amount", "-10.00"))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Credit amount must be positive"));
+                .andExpect(jsonPath("$.message").value("Credit amount must be positive"));
     }
 
     @Test
-    @DisplayName("POST /api/users/{id}/credit - zero amount rejected")
+    @DisplayName("POST /api/users/{id}/credit - zero amount rejected (JSON envelope)")
     @WithMockUser(username = "admin@example.com", authorities = {"Admin"})
     void addCredit_zeroAmount_shouldReturnBadRequest() throws Exception {
         mockMvc.perform(post("/api/users/1/credit")
                 .param("amount", "0"))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Credit amount must be positive"));
+                .andExpect(jsonPath("$.message").value("Credit amount must be positive"));
     }
 
     @Test
-    @DisplayName("POST /api/users/{id}/credit - error handling")
+    @DisplayName("POST /api/users/{id}/credit - missing user yields 404")
     @WithMockUser(username = "admin@example.com", authorities = {"Admin"})
-    void addCredit_withError_shouldReturnBadRequest() throws Exception {
-        doThrow(new RuntimeException("User not found")).when(userService).addCredit(eq(999), any(BigDecimal.class));
+    void addCredit_missingUser_shouldReturnNotFound() throws Exception {
+        doThrow(new ResourceNotFoundException("User not found"))
+            .when(userService).addCredit(eq(999), any(BigDecimal.class));
 
         mockMvc.perform(post("/api/users/999/credit")
                 .param("amount", "10.00"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -316,25 +326,28 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/users/{id} - admin cannot delete self")
+    @DisplayName("DELETE /api/users/{id} - admin cannot delete self (JSON envelope)")
     @WithMockUser(username = "admin@example.com", authorities = {"Admin"})
     void deleteUser_self_shouldReturnBadRequest() throws Exception {
         when(userService.getUserByEmail("admin@example.com")).thenReturn(adminUser);
 
         mockMvc.perform(delete("/api/users/2"))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Cannot delete your own account"));
+                .andExpect(jsonPath("$.message").value("Cannot delete your own account"));
     }
 
     @Test
-    @DisplayName("DELETE /api/users/{id} - error handling")
+    @DisplayName("DELETE /api/users/{id} - downstream failure yields 500 with generic body")
     @WithMockUser(username = "admin@example.com", authorities = {"Admin"})
-    void deleteUser_withError_shouldReturnBadRequest() throws Exception {
+    void deleteUser_withError_shouldReturnInternalServerError() throws Exception {
+        // Unhandled RuntimeException now returns a generic 500 with no
+        // internal message — preventing leakage of repository / vendor errors.
         when(userService.getUserByEmail("admin@example.com")).thenReturn(adminUser);
         doThrow(new RuntimeException("Delete failed")).when(userRepository).deleteById(999);
 
         mockMvc.perform(delete("/api/users/999"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred. Please try again later."));
     }
 
     @Test

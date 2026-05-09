@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -8,29 +8,33 @@ export default function BookingHistory() {
   const [bookings, setBookings] = useState([]);
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { user, logout } = useAuth();
+  // Only `logout` is used in the navbar; `user.id` was previously used to
+  // filter bookings client-side, but the user-scoped endpoint now does that
+  // server-side using the authenticated principal, so the destructure is gone.
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  // GET /api/bookings is admin-only after the security audit, so we fetch
+  // the current user first and then ask for that user's history via the
+  // user-scoped endpoint. fetchData is wrapped in useCallback so the
+  // useEffect below can depend on it without re-running on every render.
+  const fetchData = useCallback(async () => {
     try {
-      const [userRes, bookingsRes] = await Promise.all([
-        axios.get('/api/users/me'),
-        axios.get('/api/bookings')
-      ]);
-      
-      setUserInfo(userRes.data);
-      const userBookings = bookingsRes.data.filter(b => b.userName === user.username);
-      setBookings(userBookings);
+      const userRes = await axios.get('/api/users/me');
+      const me = userRes.data;
+      setUserInfo(me);
+      const bookingsRes = await axios.get(`/api/bookings/user/${me.id}`);
+      setBookings(bookingsRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const getStatusBadge = (status) => {
     if (status === 'Active') {

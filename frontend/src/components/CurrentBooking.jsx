@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -9,21 +9,18 @@ export default function CurrentBooking() {
   const [activeBookings, setActiveBookings] = useState([]);
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { user, logout } = useAuth();
+  // `user` was previously destructured but never used; only `logout` is needed
+  // for the navbar logout handler.
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const modernAlert = useModernAlert();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [userRes, bookingsRes] = await Promise.all([
         axios.get('/api/users/me'),
-        axios.get('/api/bookings/my-active')
+        axios.get('/api/bookings/my-active'),
       ]);
-      
       setUserInfo(userRes.data);
       setActiveBookings(bookingsRes.data);
     } catch (err) {
@@ -31,7 +28,11 @@ export default function CurrentBooking() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleCancelBooking = (bookingId) => {
     modernAlert.confirmCancelBooking(async () => {
@@ -125,7 +126,7 @@ export default function CurrentBooking() {
                     <div className="customer-empty-state">
                       <p>📅</p>
                       <p>No active bookings</p>
-                      <p>You don't have any current bookings</p>
+                      <p>You don&apos;t have any current bookings</p>
                     </div>
                   </td>
                 </tr>

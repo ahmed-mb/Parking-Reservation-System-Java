@@ -37,7 +37,10 @@ public class BookingService {
             throw new InsufficientCreditException("Insufficient credit. Balance: " + user.getCredit());
         }
 
-        Parking parking = parkingRepository.findById(parkingId)
+        // Pessimistic write-lock the parking row to prevent the classic
+        // double-booking race: two requests reading "available" at the same
+        // millisecond and both proceeding to set "booked" on the same spot.
+        Parking parking = parkingRepository.findByIdForUpdate(parkingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Parking spot not found"));
 
         if (!"available".equalsIgnoreCase(parking.getAvailability())) {

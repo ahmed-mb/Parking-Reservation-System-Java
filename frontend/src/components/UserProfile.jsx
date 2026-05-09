@@ -161,7 +161,7 @@ export default function UserProfile() {
                           onChange={(e) => setFormData({...formData, carPlateNo: e.target.value})}
                         />
                       </td>
-                      <td>{userInfo.credit != null ? Number(userInfo.credit).toFixed(2) : '0.00'}</td>
+                      <td>{userInfo.credit !== null && userInfo.credit !== undefined ? Number(userInfo.credit).toFixed(2) : '0.00'}</td>
                       <td>
                         <button 
                           className="icon-btn btn-save" 
@@ -186,7 +186,7 @@ export default function UserProfile() {
                       <td>{userInfo.mobile || ''}</td>
                       <td>{userInfo.address || ''}</td>
                       <td>{userInfo.carPlateNo || ''}</td>
-                      <td>{userInfo.credit != null ? Number(userInfo.credit).toFixed(2) : '0.00'}</td>
+                      <td>{userInfo.credit !== null && userInfo.credit !== undefined ? Number(userInfo.credit).toFixed(2) : '0.00'}</td>
                       <td>
                         <button 
                           className="icon-btn btn-edit" 

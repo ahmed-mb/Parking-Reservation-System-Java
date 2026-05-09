@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useState, useRef, useCallback, createContext, useContext } from 'react';
 import '../modern-alerts.css';
 
 // Context for global alert access
@@ -54,19 +54,22 @@ function AlertModal({ alert, onClose }) {
 // Provider Component
 export function ModernAlertProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
-  let idCounter = 0;
+  // `let idCounter = 0` was reset on every render, defeating the whole point
+  // of the counter. Storing it on a ref keeps the value stable across renders
+  // (and out of the dependency list, since refs are mutable but stable).
+  const idCounter = useRef(0);
 
   const removeAlert = useCallback((id) => {
     setAlerts(prev => prev.filter(a => a.id !== id));
   }, []);
 
   const showAlert = useCallback((icon, title, message, modalClass) => {
-    const id = Date.now() + (++idCounter);
+    const id = Date.now() + (++idCounter.current);
     setAlerts(prev => [...prev, { id, icon, title, message, modalClass, type: 'alert' }]);
   }, []);
 
   const showConfirm = useCallback((icon, title, message, modalClass, onConfirm, onCancel) => {
-    const id = Date.now() + (++idCounter);
+    const id = Date.now() + (++idCounter.current);
     setAlerts(prev => [...prev, { id, icon, title, message, modalClass, type: 'confirm', onConfirm, onCancel }]);
   }, []);
 

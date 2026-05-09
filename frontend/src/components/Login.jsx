@@ -98,7 +98,7 @@ export default function Login() {
 
               <div style={{marginTop: '20px', textAlign: 'center'}}>
                 <Link to="/register" style={{color: '#667eea', textDecoration: 'none'}}>
-                  Don't have an account? Register here
+                  Don&apos;t have an account? Register here
                 </Link>
               </div>
             </form>

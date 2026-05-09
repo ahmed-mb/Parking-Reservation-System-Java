@@ -64,7 +64,9 @@ const STEPS = [
 ];
 
 export default function DemoGuide() {
-  const { demoMode, sessionTimeout } = useDemoMode();
+  // `sessionTimeout` is also exposed by useDemoMode but not currently rendered;
+  // it is intentionally not destructured here to keep ESLint clean.
+  const { demoMode } = useDemoMode();
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [minimized, setMinimized] = useState(false);

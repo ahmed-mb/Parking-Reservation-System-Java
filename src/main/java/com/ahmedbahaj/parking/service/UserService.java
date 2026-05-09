@@ -100,12 +100,15 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        user.setUsername(updatedUser.getUsername());
-        user.setMobile(updatedUser.getMobile());
-        user.setAddress(updatedUser.getAddress());
-        user.setCarPlateNo(updatedUser.getCarPlateNo());
+        // Only mutate fields that are explicitly provided in the payload.
+        // This avoids accidentally clearing optional columns when the client
+        // omits them in a partial update.
+        if (updatedUser.getUsername() != null) user.setUsername(updatedUser.getUsername());
+        if (updatedUser.getMobile() != null)   user.setMobile(updatedUser.getMobile());
+        if (updatedUser.getAddress() != null)  user.setAddress(updatedUser.getAddress());
+        if (updatedUser.getCarPlateNo() != null) user.setCarPlateNo(updatedUser.getCarPlateNo());
 
-        if (!user.getEmail().equals(updatedUser.getEmail())) {
+        if (updatedUser.getEmail() != null && !user.getEmail().equals(updatedUser.getEmail())) {
             if (userRepository.findByEmail(updatedUser.getEmail()).isPresent()) {
                 throw new DuplicateEmailException("Email already exists");
             }
@@ -114,6 +117,14 @@ public class UserService {
 
         if (updatedUser.getCredit() != null) {
             user.setCredit(updatedUser.getCredit());
+        }
+
+        // Role updates are reserved for admins and must not happen via the
+        // self-service profile endpoint; the controller is responsible for
+        // nulling this out for non-admin callers, but we re-check here as
+        // defence-in-depth in case another caller forgets.
+        if (updatedUser.getRole() != null) {
+            user.setRole(updatedUser.getRole());
         }
 
         return userRepository.save(user);

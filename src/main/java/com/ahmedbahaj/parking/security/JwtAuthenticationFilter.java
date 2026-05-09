@@ -4,7 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,38 +15,62 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 
+/**
+ * Validates Bearer JWTs and populates the SecurityContext.
+ *
+ * Hardening notes:
+ *  - All JJWT exceptions are caught defensively so a malformed token can never
+ *    leak a stack trace to clients or break the filter chain.
+ *  - Token parsing is performed once and the role claim is read from the
+ *    already-parsed token, avoiding redundant signature checks.
+ *  - The SecurityContext is cleared on validation failure to prevent stale
+ *    authentication from leaking across requests on the same thread (Tomcat
+ *    threads are pooled).
+ */
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
-        String token = null;
-        String username = null;
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(token);
-            } catch (Exception e) {
-                // Invalid token
-                logger.error("Invalid JWT token: " + e.getMessage());
-            }
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            if (jwtUtil.validateToken(token, username)) {
+        String token = authHeader.substring(7).trim();
+        if (token.isEmpty()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        try {
+            String username = jwtUtil.extractUsername(token);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null
+                    && Boolean.TRUE.equals(jwtUtil.validateToken(token, username))) {
                 String role = jwtUtil.extractRole(token);
+                if (role == null || role.isBlank()) {
+                    // Token has no role claim - reject it, do not authenticate.
+                    logger.warn("JWT missing role claim - request denied");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         username, null, Collections.singletonList(new SimpleGrantedAuthority(role)));
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+        } catch (Exception ex) {
+            // Any parse / signature / expiration error - never authenticate.
+            // Avoid leaking the actual exception to clients; just log a one-liner.
+            SecurityContextHolder.clearContext();
+            logger.warn("Rejected JWT: " + ex.getClass().getSimpleName());
         }
 
         filterChain.doFilter(request, response);
