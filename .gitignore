@@ -49,3 +49,8 @@ frontend/.env.local
 
 # Spring Boot
 spring-shell.log
+
+.factorypath
+.vs/
+nul
+frontend/coverage/
