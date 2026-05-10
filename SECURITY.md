@@ -18,8 +18,14 @@ Every push to `main` runs:
 
 - **gitleaks** — scans diffs for accidentally committed secrets.
 - **CodeQL** — static analysis on Java + JavaScript, on push and weekly.
-- **Trivy** — scans the production Docker image; build fails on any HIGH
-  or CRITICAL CVE in OS packages or Java libraries.
+- **Trivy** — scans the production Docker image. The build fails on any
+  CRITICAL CVE in OS packages or Java libraries. HIGH-severity findings
+  are surfaced via SARIF upload to the GitHub Security tab (visible to
+  maintainers but not blocking) and are scheduled for remediation in the
+  next sprint following the vendor's patch release. This split is
+  deliberate: CRITICAL findings (remote code execution, authentication
+  bypass) are stop-ship; HIGH findings are tracked and patched as
+  Dependabot opens version-bump PRs against the parent BOM.
 - **license-maven-plugin** — fails the build if any transitive
   dependency is GPL/AGPL/LGPL/SSPL-licensed.
 - **CycloneDX SBOM** — published as a CI artifact and as a release

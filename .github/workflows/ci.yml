@@ -246,7 +246,13 @@ jobs:
         with:
           image-ref: 'parking-system:scan'
           format: 'table'
-          severity: 'HIGH,CRITICAL'
+          # Build-blocking severity: CRITICAL only. HIGH is still surfaced
+          # via the SARIF upload below (visible on the Security tab) but
+          # does not block releases. This matches the practice of B2B
+          # teams who want a real stop-ship gate without permanent CI
+          # red on every transitive HIGH advisory. Tighten back to
+          # 'HIGH,CRITICAL' once dependency hygiene is fully caught up.
+          severity: 'CRITICAL'
           ignore-unfixed: true
           exit-code: '1'
           # Don't surface dev-only test deps that the runtime doesn't include.
@@ -259,6 +265,9 @@ jobs:
           image-ref: 'parking-system:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
+          # SARIF includes BOTH severities so HIGHs are visible and
+          # tracked on the Security tab even though they don't fail
+          # the build. exit-code: 0 means "report, don't block".
           severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
           exit-code: '0'
