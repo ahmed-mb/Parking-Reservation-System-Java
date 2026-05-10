@@ -84,15 +84,18 @@ describe('BookingHistory', () => {
   });
 
   it('should show empty state when no bookings exist', async () => {
-    // Override the handler to return empty bookings
+    // After the audit fix, BookingHistory uses the user-scoped endpoint
+    // (/api/bookings/user/:userId) instead of the admin-only /api/bookings.
+    // The override has to target the new endpoint or the default mock fires
+    // and the table renders populated, hiding the empty-state UI.
     server.use(
-      http.get('/api/bookings', () => {
+      http.get('/api/bookings/user/:userId', () => {
         return HttpResponse.json([]);
       })
     );
-    
+
     renderBookingHistory();
-    
+
     await waitFor(() => {
       expect(screen.getByText('No booking history found')).toBeInTheDocument();
     });
