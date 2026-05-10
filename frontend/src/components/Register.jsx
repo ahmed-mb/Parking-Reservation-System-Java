@@ -43,10 +43,9 @@ export default function Register() {
         recaptchaToken = await executeRecaptcha('register');
       }
       
-      // Strip confirmPassword before posting; the rename to _confirmPassword
-      // satisfies ESLint's "unused var" rule (allowed prefix is `_`) while
-      // keeping the field out of the API payload.
-      // eslint-disable-next-line no-unused-vars
+      // Strip confirmPassword before posting. The rename to _confirmPassword
+      // satisfies ESLint's `no-unused-vars` rule (allowed-prefix is `_`),
+      // so no explicit eslint-disable directive is needed.
       const { confirmPassword: _confirmPassword, ...registrationData } = formData;
       await axios.post('/api/users/register', {
         ...registrationData,
