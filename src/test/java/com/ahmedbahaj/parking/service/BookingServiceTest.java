@@ -72,8 +72,10 @@ class BookingServiceTest {
     @Test
     @DisplayName("createBooking should create booking successfully")
     void createBooking_withSufficientCredit_shouldSucceed() {
+        // Service uses findByIdForUpdate (pessimistic-write lock) to prevent
+        // double-booking. The mock has to match.
         when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
-        when(parkingRepository.findById("A-001")).thenReturn(Optional.of(testParking));
+        when(parkingRepository.findByIdForUpdate("A-001")).thenReturn(Optional.of(testParking));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(i -> {
             Booking b = i.getArgument(0);
             b.setId(1);
@@ -107,7 +109,7 @@ class BookingServiceTest {
     void createBooking_whenParkingBooked_shouldThrowException() {
         testParking.setAvailability("booked");
         when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
-        when(parkingRepository.findById("A-001")).thenReturn(Optional.of(testParking));
+        when(parkingRepository.findByIdForUpdate("A-001")).thenReturn(Optional.of(testParking));
 
         assertThrows(ParkingNotAvailableException.class, () ->
             bookingService.createBooking(1, "A-001", "ABC123")
@@ -127,8 +129,10 @@ class BookingServiceTest {
     @Test
     @DisplayName("createBooking should throw exception when parking not found")
     void createBooking_whenParkingNotFound_shouldThrowException() {
+        // Mockito's strict stubbing flagged the pre-fix variant as unused
+        // because the service no longer calls findById here.
         when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
-        when(parkingRepository.findById("X-999")).thenReturn(Optional.empty());
+        when(parkingRepository.findByIdForUpdate("X-999")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () ->
             bookingService.createBooking(1, "X-999", "ABC123")
