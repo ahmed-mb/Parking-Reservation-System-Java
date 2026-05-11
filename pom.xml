@@ -13,7 +13,7 @@
             stop-ship CVEs surfaced by the production image scan.
             Dependabot will continue bumping this minor as patches land.
         -->
-        <version>3.4.5</version>
+        <version>4.0.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.ahmedbahaj</groupId>
