@@ -51,7 +51,7 @@
             no-ops and can be removed in the same PR that bumps the
             parent version.
         -->
-        <tomcat.version>10.1.53</tomcat.version>
+        <tomcat.version>11.0.22</tomcat.version>
         <spring-security.version>6.5.9</spring-security.version>
     </properties>
 
