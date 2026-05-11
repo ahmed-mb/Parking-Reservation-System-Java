@@ -20,7 +20,24 @@ RUN npm ci --production=false
 # Copy frontend source
 COPY frontend/ ./
 
-# Build for production (demo mode - no reCAPTCHA key needed)
+# ---------------------------------------------------------------------------
+# Build-time arguments for Vite.
+#
+# Vite reads VITE_* env vars at BUILD time and inlines them into the
+# JavaScript bundle (they are NOT looked up at runtime). Railway exposes the
+# service's environment variables as Docker build args automatically, but
+# only when the Dockerfile declares each ARG it wants to receive. Without
+# these two lines, npm run build below cannot see VITE_RECAPTCHA_SITE_KEY,
+# so the frontend falls back to the localhost-only test key hard-coded as
+# the App.jsx default and Google rejects the page on any real domain with
+# "ERROR for site owner: Invalid domain for site key".
+# ---------------------------------------------------------------------------
+ARG VITE_RECAPTCHA_SITE_KEY
+ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
+
+# Build for production. Demo mode is fine here too — the bundle still ships
+# a site key so the reCAPTCHA badge can render; the *backend* decides
+# whether to actually verify tokens based on the `demo.mode` property.
 RUN npm run build
 
 # --- Stage 2: Build Java Backend ---
