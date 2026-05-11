@@ -29,11 +29,13 @@ import DemoGuide from './components/DemoGuide';
 const DemoContext = createContext({ demoMode: false, sessionTimeout: 0 });
 export const useDemoMode = () => useContext(DemoContext);
 
-// reCAPTCHA v3 site key. Pulled from a Vite env var at build time so the
-// production deployment can supply its own key without code changes; falls
-// back to the project's documented public test key for local dev.
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
-  || '6LcvSh0aAAAAALmTghQPJoYv-KjmiyLSvQV8E1zs';
+// reCAPTCHA v3 site key fallback for local development. The real site
+// key is fetched at runtime from /api/config so that production
+// deployments can rotate it without a frontend rebuild. This fallback
+// is only used if /api/config returns an empty recaptchaSiteKey
+// (e.g. during local dev when the env var isn't set).
+const FALLBACK_RECAPTCHA_SITE_KEY =
+  '6LcvSh0aAAAAALmTghQPJoYv-KjmiyLSvQV8E1zs';
 
 function AppRoutes() {
   return (
@@ -110,11 +112,18 @@ function App() {
 
   if (config === null) return null;
 
+  // Read the site key from the runtime config the backend just served.
+  // If the backend didn't set one (local dev with no env var), use the
+  // public test fallback so reCAPTCHA at least renders on localhost.
+  const reCaptchaKey = config.recaptchaSiteKey && config.recaptchaSiteKey.length > 0
+    ? config.recaptchaSiteKey
+    : FALLBACK_RECAPTCHA_SITE_KEY;
+
   return (
     <DemoContext.Provider value={config}>
       <AuthProvider>
         <ModernAlertProvider>
-          <GoogleReCaptchaProvider reCaptchaKey={RECAPTCHA_SITE_KEY}>
+          <GoogleReCaptchaProvider reCaptchaKey={reCaptchaKey}>
             <AppRoutes />
           </GoogleReCaptchaProvider>
         </ModernAlertProvider>
