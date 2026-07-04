@@ -40,7 +40,10 @@
             surfaced by the Trivy gate against Spring Boot 3.4.5's defaults:
 
               CVE-2026-29145  Tomcat auth bypass (CLIENT_CERT soft-fail)
-                              -> tomcat 10.1.53+
+              CVE-2026-41293  Tomcat HTTP/2 request headers not validated
+              CVE-2026-43512  Tomcat auth bypass (digest authentication)
+              CVE-2026-43515  Tomcat improper authorization / security bypass
+                              -> tomcat 10.1.55+
               CVE-2025-41232  Spring Security method-security bypass
                               -> spring-security 6.4.6+ (covered)
               CVE-2026-22732  Spring Security policy bypass / disclosure
@@ -51,7 +54,7 @@
             no-ops and can be removed in the same PR that bumps the
             parent version.
         -->
-        <tomcat.version>10.1.53</tomcat.version>
+        <tomcat.version>10.1.55</tomcat.version>
         <spring-security.version>6.5.9</spring-security.version>
     </properties>
 
