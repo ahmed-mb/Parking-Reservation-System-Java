@@ -19,9 +19,11 @@ import DemoGuide from './components/DemoGuide';
 // ---------------------------------------------------------------------------
 // Demo-mode context
 // ---------------------------------------------------------------------------
-// Several components (Login, Register, DemoGuide) need to know whether the
-// app is running in demo mode so they can bypass reCAPTCHA and surface the
-// demo banner. The provider sits at the root of <App /> and is hydrated
+// Components like DemoGuide need to know whether the app is running in
+// demo mode so they can surface the demo banner and session-timeout hints.
+// (Demo mode does NOT bypass reCAPTCHA — the backend verifies every token,
+// so Login/Register always execute it.) The provider sits at the root of
+// <App /> and is hydrated
 // from /api/config on first render. The default value lets a component
 // imported in isolation (e.g. inside a single-component vitest case)
 // still get a valid `{ demoMode, sessionTimeout }` object without having
@@ -123,7 +125,14 @@ function App() {
     <DemoContext.Provider value={config}>
       <AuthProvider>
         <ModernAlertProvider>
-          <GoogleReCaptchaProvider reCaptchaKey={reCaptchaKey}>
+          {/* useEnterprise: the registered site key is a reCAPTCHA
+              Enterprise (score-based) key, which must be loaded via
+              enterprise.js and executed through grecaptcha.enterprise —
+              the classic api.js loader silently produces tokens that
+              Google's siteverify rejects. The backend still verifies via
+              the legacy siteverify endpoint using the key's legacy
+              secret, so no server-side change is needed. */}
+          <GoogleReCaptchaProvider reCaptchaKey={reCaptchaKey} useEnterprise>
             <AppRoutes />
           </GoogleReCaptchaProvider>
         </ModernAlertProvider>

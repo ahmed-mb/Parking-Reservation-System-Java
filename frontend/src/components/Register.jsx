@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { useModernAlert } from './ModernAlert';
-import { useDemoMode } from '../App';
 import Navbar from './Navbar';
 
 export default function Register() {
@@ -18,7 +17,6 @@ export default function Register() {
   });
   const [error, setError] = useState('');
   const { executeRecaptcha } = useGoogleReCaptcha?.() || {};
-  const { demoMode } = useDemoMode();
   const navigate = useNavigate();
   const modernAlert = useModernAlert();
 
@@ -32,17 +30,15 @@ export default function Register() {
     }
 
     try {
-      let recaptchaToken = 'demo-token';
-      
-      if (!demoMode) {
-        // reCAPTCHA v3: Execute in background with 'register' action
-        if (!executeRecaptcha) {
-          setError('reCAPTCHA not ready. Please try again.');
-          return;
-        }
-        recaptchaToken = await executeRecaptcha('register');
+      // reCAPTCHA v3: always executed, including in demo mode — the backend
+      // verifies every token, so skipping here would just guarantee a 401.
+      if (!executeRecaptcha) {
+        setError('reCAPTCHA not ready. Please try again.');
+        return;
       }
-      
+      const recaptchaToken = await executeRecaptcha('register');
+
+
       // Strip confirmPassword before posting. The rename to _confirmPassword
       // satisfies ESLint's `no-unused-vars` rule (allowed-prefix is `_`),
       // so no explicit eslint-disable directive is needed.

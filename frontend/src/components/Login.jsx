@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
-import { useDemoMode } from '../App';
 import Navbar from './Navbar';
 
 export default function Login() {
@@ -12,7 +11,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha?.() || {};
-  const { demoMode } = useDemoMode();
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -22,19 +20,16 @@ export default function Login() {
     setLoading(true);
     
     try {
-      let recaptchaToken = 'demo-token';
-      
-      if (!demoMode) {
-        // reCAPTCHA v3: Execute in background with 'login' action
-        if (!executeRecaptcha) {
-          setError('reCAPTCHA not ready. Please try again.');
-          setLoading(false);
-          return;
-        }
-        recaptchaToken = await executeRecaptcha('login');
+      // reCAPTCHA v3: always executed, including in demo mode — the backend
+      // verifies every token, so skipping here would just guarantee a 401.
+      if (!executeRecaptcha) {
+        setError('reCAPTCHA not ready. Please try again.');
+        setLoading(false);
+        return;
       }
+      const recaptchaToken = await executeRecaptcha('login');
 
-      const res = await axios.post('/api/users/login', { 
+      const res = await axios.post('/api/users/login', {
         email, 
         password,
         recaptchaToken 
