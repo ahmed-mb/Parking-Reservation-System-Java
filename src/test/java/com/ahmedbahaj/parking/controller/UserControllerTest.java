@@ -3,6 +3,7 @@ package com.ahmedbahaj.parking.controller;
 import com.ahmedbahaj.parking.dto.LoginRequest;
 import com.ahmedbahaj.parking.dto.LoginResponse;
 import com.ahmedbahaj.parking.dto.RegisterRequest;
+import com.ahmedbahaj.parking.dto.UpdateUserRequest;
 import com.ahmedbahaj.parking.exception.DuplicateEmailException;
 import com.ahmedbahaj.parking.exception.InvalidCredentialsException;
 import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
@@ -202,7 +203,7 @@ class UserControllerTest {
         updatedUser.setEmail("test@example.com");
 
         when(userService.getUserByEmail("test@example.com")).thenReturn(testUser);
-        when(userService.updateUser(eq(1), any(User.class))).thenReturn(testUser);
+        when(userService.updateUser(eq(1), any(UpdateUserRequest.class))).thenReturn(testUser);
 
         mockMvc.perform(put("/api/users/1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -233,7 +234,7 @@ class UserControllerTest {
         updatedUser.setUsername("updated");
 
         when(userService.getUserByEmail("admin@example.com")).thenReturn(adminUser);
-        when(userService.updateUser(eq(1), any(User.class))).thenReturn(testUser);
+        when(userService.updateUser(eq(1), any(UpdateUserRequest.class))).thenReturn(testUser);
 
         mockMvc.perform(put("/api/users/1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -249,7 +250,7 @@ class UserControllerTest {
         updatedUser.setUsername("updated");
 
         when(userService.getUserByEmail("test@example.com")).thenReturn(testUser);
-        when(userService.updateUser(eq(1), any(User.class)))
+        when(userService.updateUser(eq(1), any(UpdateUserRequest.class)))
             .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(put("/api/users/1")

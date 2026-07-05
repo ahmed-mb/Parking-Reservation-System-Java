@@ -3,6 +3,7 @@ package com.ahmedbahaj.parking.service;
 import com.ahmedbahaj.parking.dto.LoginRequest;
 import com.ahmedbahaj.parking.dto.LoginResponse;
 import com.ahmedbahaj.parking.dto.RegisterRequest;
+import com.ahmedbahaj.parking.dto.UpdateUserRequest;
 import com.ahmedbahaj.parking.exception.DuplicateEmailException;
 import com.ahmedbahaj.parking.exception.InvalidCredentialsException;
 import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
@@ -96,7 +97,29 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    public User updateUser(Integer id, User updatedUser) {
+    /**
+     * Applies a partial profile update.
+     *
+     * <p>Only non-null fields in {@code updatedUser} are written, so callers can
+     * send just the fields they want to change without clearing the rest.
+     * {@code updatedUser} is a {@link UpdateUserRequest} DTO rather than the
+     * {@link User} entity precisely so that "not sent" and "null" mean the
+     * same thing here — the entity's {@code role}/{@code credit} fields have
+     * non-null defaults for new-account creation, which previously caused a
+     * request that simply never mentioned {@code role} to still overwrite it
+     * back to "Customer". Changing the email re-checks uniqueness. Role
+     * changes are admin-only — the controller must null the role out for
+     * non-admin callers; this method still applies a non-null role as
+     * defence-in-depth, so callers are responsible for sanitising untrusted
+     * input first.
+     *
+     * @param id          the id of the user to update
+     * @param updatedUser an object carrying only the fields to change
+     * @return the updated, persisted {@link User}
+     * @throws ResourceNotFoundException if no user has that id
+     * @throws DuplicateEmailException if the new email is already in use
+     */
+    public User updateUser(Integer id, UpdateUserRequest updatedUser) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
