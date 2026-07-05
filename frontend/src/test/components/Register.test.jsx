@@ -6,9 +6,11 @@ import { AuthProvider } from '../../context/AuthContext';
 import { ModernAlertProvider } from '../../components/ModernAlert';
 import Register from '../../components/Register';
 
-// Mock useDemoMode
-vi.mock('../../App', () => ({
-  useDemoMode: () => ({ demoMode: true, sessionTimeout: 0 })
+// Mock reCAPTCHA — jsdom can't load Google's script, so stub the hook
+// with an executeRecaptcha that resolves like the real one would.
+const mockExecuteRecaptcha = vi.fn().mockResolvedValue('test-recaptcha-token');
+vi.mock('react-google-recaptcha-v3', () => ({
+  useGoogleReCaptcha: () => ({ executeRecaptcha: mockExecuteRecaptcha })
 }));
 
 // Mock useNavigate

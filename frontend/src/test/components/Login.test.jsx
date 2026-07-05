@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -8,9 +8,12 @@ import Login from '../../components/Login';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 
-// Mock useDemoMode
-vi.mock('../../App', () => ({
-  useDemoMode: () => ({ demoMode: true, sessionTimeout: 0 })
+// Mock reCAPTCHA — jsdom can't load Google's script, so stub the hook.
+// Tests can reassign mockExecuteRecaptcha (e.g. to undefined) to exercise
+// the "reCAPTCHA not ready" path; beforeEach restores the default.
+let mockExecuteRecaptcha;
+vi.mock('react-google-recaptcha-v3', () => ({
+  useGoogleReCaptcha: () => ({ executeRecaptcha: mockExecuteRecaptcha })
 }));
 
 const renderLogin = () => {
@@ -30,6 +33,10 @@ const renderLogin = () => {
 };
 
 describe('Login', () => {
+  beforeEach(() => {
+    mockExecuteRecaptcha = vi.fn().mockResolvedValue('test-recaptcha-token');
+  });
+
   it('should render login form', async () => {
     localStorage.getItem.mockReturnValue(null);
     renderLogin();
@@ -154,14 +161,24 @@ describe('Login', () => {
     });
   });
 
-  it('should handle reCAPTCHA not ready in non-demo mode', async () => {
-    // This test would require mocking the demo mode to false
-    // For now, we test the demo mode flow which skips reCAPTCHA
+  it('should show an error when reCAPTCHA is not ready', async () => {
+    // Simulate the window before Google's script has loaded, when the
+    // library's hook returns executeRecaptcha as undefined.
+    mockExecuteRecaptcha = undefined;
     localStorage.getItem.mockReturnValue(null);
+    const user = userEvent.setup();
     renderLogin();
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /LOGIN/i })).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Email/i)).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText(/Email/i), 'test@example.com');
+    await user.type(screen.getByPlaceholderText(/Password/i), 'Password@123');
+    await user.click(screen.getByRole('button', { name: /LOGIN/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/reCAPTCHA not ready/i)).toBeInTheDocument();
     });
   });
 
