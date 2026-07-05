@@ -84,12 +84,15 @@ class ParkingResetSchedulerTest {
     }
 
     @Test
-    @DisplayName("resetParkingAndBookings - should handle exception gracefully")
-    void resetParkingAndBookings_shouldHandleException() {
+    @DisplayName("resetParkingAndBookings - should propagate exception so @Transactional rolls back")
+    void resetParkingAndBookings_shouldPropagateException() {
         when(bookingRepository.findByStatus("Active")).thenThrow(new RuntimeException("Database error"));
 
-        // Should not throw - exception is caught and logged
-        assertDoesNotThrow(() -> scheduler.resetParkingAndBookings());
+        // Must propagate - a caught-and-swallowed exception would mean
+        // Spring's transaction manager never sees the failure and commits
+        // whatever was already flushed, breaking the atomicity this method
+        // is documented to provide.
+        assertThrows(RuntimeException.class, () -> scheduler.resetParkingAndBookings());
 
         verify(bookingRepository).findByStatus("Active");
         verify(parkingService, never()).resetAllParkingSpots();
