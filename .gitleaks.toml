@@ -26,7 +26,6 @@ paths = [
     '''ARCHITECTURE\.md''',
     '''PROGRESS\.md''',
     '''PROJECT_OVERVIEW\.md''',
-    '''RAILWAY\.md''',
 ]
 
 # Test fixtures: deliberately contrived values that look like secrets but

@@ -16,7 +16,7 @@ import java.util.Map;
  * session timeout hint, reCAPTCHA site key). The site key is shipped at
  * runtime instead of being baked into the JavaScript bundle at build
  * time so that key rotation doesn't require a rebuild and so that
- * deployment targets (Railway, Docker hosts) only need to set a single
+ * deployment targets (Docker hosts) only need to set a single
  * RECAPTCHA_SITE_KEY environment variable rather than threading a Vite
  * build argument through the Dockerfile.
  */

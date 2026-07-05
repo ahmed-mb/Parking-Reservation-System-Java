@@ -47,7 +47,7 @@ public class SecurityConfig {
                 auth.requestMatchers("/api/parking/available/**", "/api/parking/available/count").permitAll();
                 auth.requestMatchers("/api/config").permitAll();
                 
-                // Actuator health endpoint (required for Railway healthcheck)
+                // Actuator health endpoint (used by Docker's HEALTHCHECK and Nginx's readiness probe)
                 auth.requestMatchers("/actuator/health").permitAll();
                 
                 // Static resources (React SPA served by Spring Boot)
@@ -81,8 +81,8 @@ public class SecurityConfig {
                     headers.frameOptions(frame -> frame.deny());
                 }
                 // Force HTTPS for one year, including subdomains. Safe even when
-                // running behind Railway/Nginx because the proxy strips the header
-                // for HTTP-only access.
+                // running behind the bundled Nginx (or any reverse proxy) because
+                // the proxy strips the header for HTTP-only access.
                 headers.httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
                     .maxAgeInSeconds(31_536_000L));
