@@ -15,6 +15,19 @@ ALTER TABLE logintable ADD TokenVersion INT NOT NULL DEFAULT 0;
 Run this before deploying any build newer than the commit that added
 `tokenVersion` to `User.java`.
 
+## Pending manual step: Booking indices on the prod SQL Server DB
+
+`Booking` gained `@Index` declarations on `user_id` and `status` (queried on
+every dashboard load and every nightly reset). `ddl-auto=validate` does not
+check for or create indices, so this is not a fail-closed startup gate like
+the column above — the app will start fine either way — but the indices
+won't actually exist in prod until you run:
+
+```sql
+CREATE INDEX idx_booking_user_id ON [Booking] (user_id);
+CREATE INDEX idx_booking_status ON [Booking] (status);
+```
+
 ## Reporting a vulnerability
 
 If you find a security issue, please email the maintainer rather than
