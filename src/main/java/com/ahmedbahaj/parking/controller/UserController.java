@@ -3,6 +3,7 @@ package com.ahmedbahaj.parking.controller;
 import com.ahmedbahaj.parking.dto.LoginRequest;
 import com.ahmedbahaj.parking.dto.LoginResponse;
 import com.ahmedbahaj.parking.dto.RegisterRequest;
+import com.ahmedbahaj.parking.dto.UpdateUserRequest;
 import com.ahmedbahaj.parking.dto.UserResponse;
 import com.ahmedbahaj.parking.model.User;
 import com.ahmedbahaj.parking.repository.UserRepository;
@@ -61,7 +62,7 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Integer id,
-            @RequestBody User user,
+            @Valid @RequestBody UpdateUserRequest user,
             Authentication authentication) {
         User currentUser = userService.getUserByEmail(authentication.getName());
 

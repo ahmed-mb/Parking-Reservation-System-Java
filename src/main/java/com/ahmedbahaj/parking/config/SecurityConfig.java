@@ -47,7 +47,7 @@ public class SecurityConfig {
                 auth.requestMatchers("/api/parking/available/**", "/api/parking/available/count").permitAll();
                 auth.requestMatchers("/api/config").permitAll();
                 
-                // Actuator health endpoint (required for Railway healthcheck)
+                // Actuator health endpoint (used by Docker's HEALTHCHECK and Nginx's readiness probe)
                 auth.requestMatchers("/actuator/health").permitAll();
                 
                 // Static resources (React SPA served by Spring Boot)
@@ -81,8 +81,8 @@ public class SecurityConfig {
                     headers.frameOptions(frame -> frame.deny());
                 }
                 // Force HTTPS for one year, including subdomains. Safe even when
-                // running behind Railway/Nginx because the proxy strips the header
-                // for HTTP-only access.
+                // running behind the bundled Nginx (or any reverse proxy) because
+                // the proxy strips the header for HTTP-only access.
                 headers.httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
                     .maxAgeInSeconds(31_536_000L));
@@ -95,6 +95,24 @@ public class SecurityConfig {
                     org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN));
                 headers.crossOriginResourcePolicy(corp -> corp.policy(
                     org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_SITE));
+                // CSP tuned to what index.html and the reCAPTCHA v3 widget
+                // actually load: Bootstrap/jQuery from jsdelivr + code.jquery.com,
+                // Font Awesome (CSS + webfonts) from cdnjs, and Google's
+                // recaptcha script/frame/xhr endpoints. 'unsafe-inline' is
+                // scoped to style-src only, for the inline style="" attributes
+                // in the (now-sanitized) alert/demo-guide HTML strings — no
+                // script-src exception is granted.
+                headers.contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; "
+                    + "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; "
+                    + "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; "
+                    + "font-src 'self' https://cdnjs.cloudflare.com; "
+                    + "img-src 'self' data:; "
+                    + "connect-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; "
+                    + "frame-src https://www.google.com/recaptcha/; "
+                    + "frame-ancestors 'none'; "
+                    + "base-uri 'self'; "
+                    + "form-action 'self'"));
             })
             // Rate-limit auth endpoints first, then validate any Bearer JWT.
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)

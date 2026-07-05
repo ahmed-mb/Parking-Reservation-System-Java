@@ -3,6 +3,7 @@ package com.ahmedbahaj.parking.service;
 import com.ahmedbahaj.parking.dto.LoginRequest;
 import com.ahmedbahaj.parking.dto.LoginResponse;
 import com.ahmedbahaj.parking.dto.RegisterRequest;
+import com.ahmedbahaj.parking.dto.UpdateUserRequest;
 import com.ahmedbahaj.parking.exception.DuplicateEmailException;
 import com.ahmedbahaj.parking.exception.InsufficientCreditException;
 import com.ahmedbahaj.parking.exception.InvalidCredentialsException;
@@ -89,7 +90,7 @@ class UserServiceTest {
         when(recaptchaService.verifyRecaptcha(anyString())).thenReturn(true);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("Password@123", "encodedPassword")).thenReturn(true);
-        when(jwtUtil.generateToken("test@example.com", "Customer")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("test@example.com", "Customer", 0)).thenReturn("jwt-token");
 
         LoginResponse response = userService.login(loginRequest);
 
@@ -214,7 +215,7 @@ class UserServiceTest {
     @Test
     @DisplayName("updateUser should update user fields")
     void updateUser_shouldUpdateFields() {
-        User updatedUser = new User();
+        UpdateUserRequest updatedUser = new UpdateUserRequest();
         updatedUser.setUsername("updatedname");
         updatedUser.setEmail("test@example.com"); // same email
         updatedUser.setMobile("9999999999");
@@ -235,7 +236,7 @@ class UserServiceTest {
     @Test
     @DisplayName("updateUser should throw exception when changing to existing email")
     void updateUser_whenEmailExists_shouldThrowException() {
-        User updatedUser = new User();
+        UpdateUserRequest updatedUser = new UpdateUserRequest();
         updatedUser.setEmail("existing@example.com");
 
         when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
@@ -283,7 +284,7 @@ class UserServiceTest {
     @Test
     @DisplayName("updateUser should update credit when provided")
     void updateUser_shouldUpdateCredit() {
-        User updatedUser = new User();
+        UpdateUserRequest updatedUser = new UpdateUserRequest();
         updatedUser.setUsername("testuser");
         updatedUser.setEmail("test@example.com");
         updatedUser.setMobile("1234567890");
@@ -297,6 +298,66 @@ class UserServiceTest {
         User result = userService.updateUser(1, updatedUser);
 
         assertEquals(new BigDecimal("50.00"), result.getCredit());
+    }
+
+    @Test
+    @DisplayName("updateUser should bump tokenVersion when role actually changes")
+    void updateUser_whenRoleChanges_shouldBumpTokenVersion() {
+        UpdateUserRequest updatedUser = new UpdateUserRequest();
+        updatedUser.setRole("Admin");
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.updateUser(1, updatedUser);
+
+        assertEquals("Admin", result.getRole());
+        assertEquals(1, result.getTokenVersion());
+    }
+
+    @Test
+    @DisplayName("updateUser should not bump tokenVersion when role is unchanged")
+    void updateUser_whenRoleUnchanged_shouldNotBumpTokenVersion() {
+        UpdateUserRequest updatedUser = new UpdateUserRequest();
+        updatedUser.setRole("Customer"); // same as testUser's current role
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.updateUser(1, updatedUser);
+
+        assertEquals("Customer", result.getRole());
+    }
+
+    @Test
+    @DisplayName("updateUser should leave role and credit untouched when the request never mentions them")
+    void updateUser_omittingRoleAndCredit_shouldNotResetThem() {
+        // Regression test: the admin panel's edit-customer form never sends
+        // "role" or "credit" at all. Binding the raw User entity as the
+        // request body used to mean Jackson defaulted those two fields to
+        // "Customer"/0.00 (the entity's own field initializers) instead of
+        // leaving them null, silently wiping an Admin's role and any
+        // accumulated credit on every unrelated profile edit.
+        User targetAdmin = new User();
+        targetAdmin.setId(1);
+        targetAdmin.setUsername("adminuser");
+        targetAdmin.setEmail("admin2@example.com");
+        targetAdmin.setRole("Admin");
+        targetAdmin.setCredit(new BigDecimal("42.00"));
+
+        UpdateUserRequest updatedUser = new UpdateUserRequest();
+        updatedUser.setMobile("5551234567"); // the only field this "request" carries
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(targetAdmin));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.updateUser(1, updatedUser);
+
+        assertEquals("5551234567", result.getMobile());
+        assertEquals("Admin", result.getRole());
+        assertEquals(new BigDecimal("42.00"), result.getCredit());
+        assertEquals(0, result.getTokenVersion()); // unchanged since role never changed
+        assertEquals(0, result.getTokenVersion());
     }
 
     @Test

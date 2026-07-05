@@ -1,5 +1,6 @@
 package com.ahmedbahaj.parking.security;
 
+import com.ahmedbahaj.parking.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -23,6 +25,9 @@ class JwtAuthenticationFilterTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private HttpServletRequest request;
@@ -71,6 +76,8 @@ class JwtAuthenticationFilterTest {
         when(jwtUtil.extractUsername(token)).thenReturn("test@example.com");
         when(jwtUtil.validateToken(token, "test@example.com")).thenReturn(true);
         when(jwtUtil.extractRole(token)).thenReturn("Customer");
+        when(userRepository.findTokenVersionByEmail("test@example.com")).thenReturn(Optional.of(0));
+        when(jwtUtil.extractTokenVersion(token)).thenReturn(0);
 
         filter.doFilterInternal(request, response, filterChain);
 
@@ -114,6 +121,8 @@ class JwtAuthenticationFilterTest {
         when(jwtUtil.extractUsername(token)).thenReturn("admin@example.com");
         when(jwtUtil.validateToken(token, "admin@example.com")).thenReturn(true);
         when(jwtUtil.extractRole(token)).thenReturn("Admin");
+        when(userRepository.findTokenVersionByEmail("admin@example.com")).thenReturn(Optional.of(0));
+        when(jwtUtil.extractTokenVersion(token)).thenReturn(0);
 
         filter.doFilterInternal(request, response, filterChain);
 
@@ -122,6 +131,39 @@ class JwtAuthenticationFilterTest {
         assertTrue(SecurityContextHolder.getContext().getAuthentication()
             .getAuthorities().stream()
             .anyMatch(a -> a.getAuthority().equals("Admin")));
+    }
+
+    @Test
+    @DisplayName("doFilterInternal - token version mismatch should continue without auth")
+    void doFilterInternal_tokenVersionMismatch_shouldContinueWithoutAuth() throws ServletException, IOException {
+        String token = "stale-jwt-token";
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(jwtUtil.extractUsername(token)).thenReturn("test@example.com");
+        when(jwtUtil.validateToken(token, "test@example.com")).thenReturn(true);
+        when(jwtUtil.extractRole(token)).thenReturn("Customer");
+        when(userRepository.findTokenVersionByEmail("test@example.com")).thenReturn(Optional.of(1));
+        when(jwtUtil.extractTokenVersion(token)).thenReturn(0); // token predates a role change
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    @DisplayName("doFilterInternal - deleted user should continue without auth")
+    void doFilterInternal_userDeleted_shouldContinueWithoutAuth() throws ServletException, IOException {
+        String token = "orphaned-jwt-token";
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(jwtUtil.extractUsername(token)).thenReturn("gone@example.com");
+        when(jwtUtil.validateToken(token, "gone@example.com")).thenReturn(true);
+        when(jwtUtil.extractRole(token)).thenReturn("Customer");
+        when(userRepository.findTokenVersionByEmail("gone@example.com")).thenReturn(Optional.empty());
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
     @Test

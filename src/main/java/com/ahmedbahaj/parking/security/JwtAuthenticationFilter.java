@@ -1,5 +1,6 @@
 package com.ahmedbahaj.parking.security;
 
+import com.ahmedbahaj.parking.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Optional;
 
 /**
  * Validates Bearer JWTs and populates the SecurityContext.
@@ -26,12 +28,19 @@ import java.util.Collections;
  *  - The SecurityContext is cleared on validation failure to prevent stale
  *    authentication from leaking across requests on the same thread (Tomcat
  *    threads are pooled).
+ *  - The token's {@code tv} claim is compared against the user's current
+ *    {@code tokenVersion} in the DB (one scalar lookup per request). A
+ *    mismatch — or no user found at all, e.g. the account was deleted —
+ *    rejects the token even though its signature and expiry are still valid.
+ *    This is what makes role changes and account deletion take effect
+ *    immediately instead of waiting out the token's expiry window.
  */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -61,6 +70,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response);
                     return;
                 }
+
+                Optional<Integer> currentTokenVersion = userRepository.findTokenVersionByEmail(username);
+                if (currentTokenVersion.isEmpty()) {
+                    // User no longer exists (deleted since the token was issued).
+                    logger.warn("Rejected JWT: user no longer exists");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                Integer tokenVersion = jwtUtil.extractTokenVersion(token);
+                if (tokenVersion == null || !tokenVersion.equals(currentTokenVersion.get())) {
+                    // Token predates a role change (or similar) that bumped
+                    // tokenVersion - treat it as revoked even though the
+                    // signature and expiry are still valid.
+                    logger.warn("Rejected JWT: token version mismatch");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         username, null, Collections.singletonList(new SimpleGrantedAuthority(role)));
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

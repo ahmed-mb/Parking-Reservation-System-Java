@@ -4,7 +4,7 @@ A parking reservation system migrated from **ASP.NET Web Forms** to **Java Sprin
 
 ## Live Demo
 
-The application is deployed on Railway: **[Live Demo](https://parking-reservation-system-java-production.up.railway.app)**
+The application is self-hosted via Docker: **[Live Demo](https://hal-server-832612.tail27051c.ts.net/)**
 
 **Demo Credentials:**
 - **Admin**: `admin@parking.com` / `Admin@123`
@@ -14,7 +14,7 @@ The application is deployed on Railway: **[Live Demo](https://parking-reservatio
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Java 17, Spring Boot 3.2.0, Spring Security, Spring Data JPA |
+| Backend | Java 17, Spring Boot 3.4.5, Spring Security, Spring Data JPA |
 | Frontend | React 18, React Router 6, Axios, Vite 5 |
 | Auth | JWT (jjwt 0.12.3) + BCrypt + reCAPTCHA v3 |
 | Database | H2 (dev) / SQL Server (prod) |
@@ -38,7 +38,7 @@ mvn spring-boot:run
 
 Backend runs at `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
-- H2 Console: `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:parkingdb`, user: `sa`, pass: `password`)
+- H2 Console: disabled by default (`spring.h2.console.enabled=false`); set that property to `true` locally if you need it (JDBC URL: `jdbc:h2:mem:parkingdb`, user: `sa`, pass: `password`)
 
 ### Frontend
 
@@ -59,7 +59,7 @@ On startup, `DatabaseInitializer` seeds:
 ## Test Flow
 
 1. Open `http://localhost:5173` -- Home page with "Check Availability"
-2. Register a new customer account (password must be 8+ chars with uppercase, lowercase, and digit)
+2. Register a new customer account (password must be 8+ characters with an uppercase letter, a lowercase letter, a digit, and a special character; it cannot contain your username or be a common password)
 3. Login -- redirected to Dashboard
 4. Click "Book Now" -- $6.00 deducted, spot assigned
 5. Go to Current Booking -- cancel or report spot taken
@@ -67,16 +67,18 @@ On startup, `DatabaseInitializer` seeds:
 
 ## Configuration
 
-### JWT (application.properties)
+### JWT
+No secret ships with the app. Set the `JWT_SECRET` environment variable
+(32+ random characters / 256+ bits) before running any profile; without
+it, the app still boots using a per-process random secret, but every
+restart invalidates all outstanding tokens.
 ```properties
-jwt.secret=MySecretKeyForJWTTokenGenerationMustBeLongEnoughForHS256Algorithm
-jwt.expiration=86400000  # 24 hours
+jwt.expiration=86400000  # 24 hours (prod); shorter in the demo profile
 ```
 
 ### reCAPTCHA v3
-- Frontend site key is set in `App.jsx` (`GoogleReCaptchaProvider`)
-- Backend secret key is in `application.properties` (`recaptcha.secret-key`)
-- Current keys are Google test keys -- replace with production keys before deploying
+- The frontend fetches its site key at runtime from `GET /api/config` (see `ConfigController`) -- no key is baked into the JS bundle.
+- Both `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY` are required environment variables in every profile; there's no bypass and no built-in fallback. Register a site at https://www.google.com/recaptcha/admin for whatever domain you deploy to.
 
 ### Production Database
 Use the `prod` Spring profile with `application-prod.properties` for SQL Server + HikariCP connection pooling.
@@ -116,31 +118,35 @@ Use the `prod` Spring profile with `application-prod.properties` for SQL Server 
 ## Docker Deployment
 
 ### Local Demo (with Nginx)
+Copy `.env.example` to `.env` and fill in `JWT_SECRET`, `ADMIN_DEFAULT_PASSWORD`,
+`RECAPTCHA_SITE_KEY`, and `RECAPTCHA_SECRET_KEY` first -- `docker-compose.yml`
+requires all four and will refuse to start without them.
 ```bash
-docker-compose up --build
+docker compose --env-file .env up --build
 # Access at http://localhost:3080
 ```
 
-### Railway Deployment
-```bash
-# Push to GitHub, then deploy from Railway dashboard
-# See RAILWAY.md for detailed instructions
-```
+### Signed release images
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds,
+tests, and publishes a cosign-signed image with an attached CycloneDX SBOM
+to `ghcr.io/<owner>/parking-reservation-system`. See [SECURITY.md](SECURITY.md#cryptographic-supply-chain)
+for the verification command.
 
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- System design, file structure, tech decisions
 - [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) -- Migration context, ASP.NET vs Java feature comparison
 - [PROGRESS.md](PROGRESS.md) -- Detailed log of the comparison audit and all fixes applied
-- [RAILWAY.md](RAILWAY.md) -- Railway deployment guide with troubleshooting
+- [SECURITY.md](SECURITY.md) -- Supply-chain controls, pending manual security steps, vulnerability reporting
 
 ## Production Checklist
 
-- [x] Replace JWT secret with environment variable
-- [x] Security audit (16 vulnerabilities fixed)
+- [x] Replace JWT secret with environment variable (required, no fallback)
+- [x] Security audit (16 vulnerabilities fixed; see SECURITY.md for follow-up items)
 - [x] IDOR protection on all endpoints
 - [x] Docker containerization
-- [x] Railway deployment
-- [ ] Replace reCAPTCHA test keys with production keys
+- [x] Content-Security-Policy header
+- [x] JWT revocation via per-user token version
+- [ ] Register production reCAPTCHA keys for the actual deployment domain
 - [ ] Configure SQL Server for persistent data
 - [ ] Set up custom domain with SSL

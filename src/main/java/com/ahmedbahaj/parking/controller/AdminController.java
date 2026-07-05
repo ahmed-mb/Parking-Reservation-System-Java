@@ -1,14 +1,15 @@
 package com.ahmedbahaj.parking.controller;
 
+import com.ahmedbahaj.parking.dto.UpdateUserRequest;
 import com.ahmedbahaj.parking.dto.UserResponse;
 import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
 import com.ahmedbahaj.parking.model.Booking;
 import com.ahmedbahaj.parking.model.Parking;
-import com.ahmedbahaj.parking.model.User;
 import com.ahmedbahaj.parking.repository.BookingRepository;
 import com.ahmedbahaj.parking.repository.ParkingRepository;
 import com.ahmedbahaj.parking.repository.UserRepository;
 import com.ahmedbahaj.parking.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,7 +52,7 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Integer id, @RequestBody User user) {
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Integer id, @Valid @RequestBody UpdateUserRequest user) {
         // No try/catch: ResourceNotFoundException, DuplicateEmailException,
         // etc. flow through GlobalExceptionHandler and produce the right
         // status code and JSON envelope automatically.

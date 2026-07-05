@@ -1,5 +1,6 @@
 package com.ahmedbahaj.parking.controller;
 
+import com.ahmedbahaj.parking.dto.UpdateUserRequest;
 import com.ahmedbahaj.parking.exception.ResourceNotFoundException;
 import com.ahmedbahaj.parking.model.Booking;
 import com.ahmedbahaj.parking.model.Parking;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +27,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -122,7 +126,7 @@ class AdminControllerTest {
     @DisplayName("PUT /api/admin/users/{id} - update user")
     @WithMockUser(authorities = {"Admin"})
     void updateUser_shouldReturnUpdatedUser() throws Exception {
-        when(userService.updateUser(eq(1), any(User.class))).thenReturn(testUser);
+        when(userService.updateUser(eq(1), any(UpdateUserRequest.class))).thenReturn(testUser);
 
         mockMvc.perform(put("/api/admin/users/1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -131,12 +135,38 @@ class AdminControllerTest {
     }
 
     @Test
+    @DisplayName("PUT /api/admin/users/{id} - JSON omitting role/credit deserializes them as null, not entity defaults")
+    @WithMockUser(authorities = {"Admin"})
+    void updateUser_jsonOmittingRoleAndCredit_shouldBindThemAsNull() throws Exception {
+        // Regression test for the actual admin-panel bug: the edit-customer
+        // form's JSON body never contains "role" or "credit" at all. When
+        // this endpoint bound the raw User entity directly, Jackson left
+        // those two fields at the entity's own field-initializer defaults
+        // ("Customer" / 0.00) instead of null, so UserService.updateUser's
+        // "only write non-null fields" logic silently overwrote them anyway.
+        // This asserts the actual JSON-binding behavior, not just the
+        // service's null-check logic in isolation.
+        when(userService.updateUser(eq(1), any(UpdateUserRequest.class))).thenReturn(testUser);
+        ArgumentCaptor<UpdateUserRequest> captor = ArgumentCaptor.forClass(UpdateUserRequest.class);
+
+        mockMvc.perform(put("/api/admin/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mobile\":\"5551234567\"}"))
+                .andExpect(status().isOk());
+
+        verify(userService).updateUser(eq(1), captor.capture());
+        assertNull(captor.getValue().getRole());
+        assertNull(captor.getValue().getCredit());
+        assertEquals("5551234567", captor.getValue().getMobile());
+    }
+
+    @Test
     @DisplayName("PUT /api/admin/users/{id} - missing user yields 404")
     @WithMockUser(authorities = {"Admin"})
     void updateUser_missing_shouldReturnNotFound() throws Exception {
         // After the audit fix, AdminController no longer wraps the call in a
         // catch-all. Specific exceptions flow through GlobalExceptionHandler.
-        when(userService.updateUser(eq(1), any(User.class)))
+        when(userService.updateUser(eq(1), any(UpdateUserRequest.class)))
             .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(put("/api/admin/users/1")

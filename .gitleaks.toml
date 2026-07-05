@@ -26,7 +26,6 @@ paths = [
     '''ARCHITECTURE\.md''',
     '''PROGRESS\.md''',
     '''PROJECT_OVERVIEW\.md''',
-    '''RAILWAY\.md''',
 ]
 
 # Test fixtures: deliberately contrived values that look like secrets but
@@ -42,7 +41,14 @@ regexes = [
     '''Admin@123''',
     # H2 in-memory database default credentials used only during local dev.
     '''jdbc:h2:mem:[a-z]+''',
-    # Google reCAPTCHA v3 *test* keys (the public, well-known ones from
-    # https://developers.google.com/recaptcha/docs/faq).
-    '''6Lc[A-Za-z0-9_-]{38}''',
+    # NOTE: a prior entry here, '''6Lc[A-Za-z0-9_-]{38}''', was REMOVED.
+    # It was labelled as "Google reCAPTCHA v3 test keys" but that pattern
+    # actually matched (and suppressed) this project's own real, live
+    # reCAPTCHA secret key that had been committed to application.properties.
+    # Google's actual published test keys start with "6LeIxAcT..." / a
+    # different prefix entirely, and no fixture in this repo uses the
+    # 6Lc-prefixed form (grep src/test for "recaptcha" — only the literal
+    # string "test-secret-key" is used). Do not re-add a broad allowlist
+    # regex for reCAPTCHA-shaped strings; allowlist exact fixture values
+    # instead so a real leaked key can never hide behind this file again.
 ]
