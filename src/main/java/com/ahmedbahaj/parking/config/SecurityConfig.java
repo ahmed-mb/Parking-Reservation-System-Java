@@ -95,6 +95,24 @@ public class SecurityConfig {
                     org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN));
                 headers.crossOriginResourcePolicy(corp -> corp.policy(
                     org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_SITE));
+                // CSP tuned to what index.html and the reCAPTCHA v3 widget
+                // actually load: Bootstrap/jQuery from jsdelivr + code.jquery.com,
+                // Font Awesome (CSS + webfonts) from cdnjs, and Google's
+                // recaptcha script/frame/xhr endpoints. 'unsafe-inline' is
+                // scoped to style-src only, for the inline style="" attributes
+                // in the (now-sanitized) alert/demo-guide HTML strings — no
+                // script-src exception is granted.
+                headers.contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; "
+                    + "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; "
+                    + "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; "
+                    + "font-src 'self' https://cdnjs.cloudflare.com; "
+                    + "img-src 'self' data:; "
+                    + "connect-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; "
+                    + "frame-src https://www.google.com/recaptcha/; "
+                    + "frame-ancestors 'none'; "
+                    + "base-uri 'self'; "
+                    + "form-action 'self'"));
             })
             // Rate-limit auth endpoints first, then validate any Bearer JWT.
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)

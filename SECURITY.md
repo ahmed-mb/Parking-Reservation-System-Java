@@ -1,5 +1,20 @@
 # Security Policy
 
+## Pending manual step: TokenVersion column on the prod SQL Server DB
+
+`User` gained a `tokenVersion` column (JWT revocation — see `JwtUtil`,
+`JwtAuthenticationFilter`, `UserService.updateUser`). H2 (`demo`/default
+profiles, `ddl-auto=update`) picks this up automatically. The prod profile
+runs `ddl-auto=validate`, which never alters schema — it will refuse to
+start (fail closed, not silently) until this runs against the prod DB first:
+
+```sql
+ALTER TABLE logintable ADD TokenVersion INT NOT NULL DEFAULT 0;
+```
+
+Run this before deploying any build newer than the commit that added
+`tokenVersion` to `User.java`.
+
 ## Reporting a vulnerability
 
 If you find a security issue, please email the maintainer rather than

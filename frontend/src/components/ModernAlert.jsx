@@ -1,5 +1,12 @@
 import { useState, useRef, useCallback, createContext, useContext } from 'react';
+import DOMPurify from 'dompurify';
 import '../modern-alerts.css';
+
+// title/message strings come from calling code throughout the app, including
+// backend error messages (err.response?.data?.message) — sanitize before
+// rendering as HTML. Only the minimal markup actually used (br, strong) is
+// allowed; no attributes, so no style/class/on* injection vector survives.
+const sanitize = (html) => DOMPurify.sanitize(html, { ALLOWED_TAGS: ['br', 'strong'], ALLOWED_ATTR: [] });
 
 // Context for global alert access
 const AlertContext = createContext(null);
@@ -30,11 +37,11 @@ function AlertModal({ alert, onClose }) {
     <div className="modern-alert-backdrop" onClick={type === 'alert' ? handleClose : undefined}>
       <div className={`modern-alert-modal ${modalClass || 'modal-info'}`} onClick={(e) => e.stopPropagation()}>
         <div className="modern-alert-header">
-          <h5 className="modern-alert-title" dangerouslySetInnerHTML={{ __html: title }} />
+          <h5 className="modern-alert-title" dangerouslySetInnerHTML={{ __html: sanitize(title) }} />
         </div>
         <div className="modern-alert-body">
           <div className="modern-alert-icon">{icon}</div>
-          <div className="modern-alert-message" dangerouslySetInnerHTML={{ __html: message }} />
+          <div className="modern-alert-message" dangerouslySetInnerHTML={{ __html: sanitize(message) }} />
         </div>
         <div className="modern-alert-footer">
           {type === 'confirm' ? (

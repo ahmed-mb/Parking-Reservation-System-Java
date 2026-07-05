@@ -60,7 +60,7 @@ public class UserService {
         }
 
         clearFailedAttempts(email);
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getTokenVersion());
         log.info("Login successful for: {}", email);
 
         return new LoginResponse(token, user.getEmail(), user.getUsername(), user.getRole());
@@ -123,7 +123,12 @@ public class UserService {
         // self-service profile endpoint; the controller is responsible for
         // nulling this out for non-admin callers, but we re-check here as
         // defence-in-depth in case another caller forgets.
-        if (updatedUser.getRole() != null) {
+        if (updatedUser.getRole() != null && !updatedUser.getRole().equals(user.getRole())) {
+            // Bump tokenVersion so any JWT already issued to this user (which
+            // carries the OLD role as a claim) is rejected by
+            // JwtAuthenticationFilter on its very next use, instead of
+            // remaining valid - with the old, now-wrong role - until it expires.
+            user.setTokenVersion(user.getTokenVersion() + 1);
             user.setRole(updatedUser.getRole());
         }
 

@@ -89,7 +89,7 @@ class UserServiceTest {
         when(recaptchaService.verifyRecaptcha(anyString())).thenReturn(true);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("Password@123", "encodedPassword")).thenReturn(true);
-        when(jwtUtil.generateToken("test@example.com", "Customer")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("test@example.com", "Customer", 0)).thenReturn("jwt-token");
 
         LoginResponse response = userService.login(loginRequest);
 
@@ -297,6 +297,36 @@ class UserServiceTest {
         User result = userService.updateUser(1, updatedUser);
 
         assertEquals(new BigDecimal("50.00"), result.getCredit());
+    }
+
+    @Test
+    @DisplayName("updateUser should bump tokenVersion when role actually changes")
+    void updateUser_whenRoleChanges_shouldBumpTokenVersion() {
+        User updatedUser = new User();
+        updatedUser.setRole("Admin");
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.updateUser(1, updatedUser);
+
+        assertEquals("Admin", result.getRole());
+        assertEquals(1, result.getTokenVersion());
+    }
+
+    @Test
+    @DisplayName("updateUser should not bump tokenVersion when role is unchanged")
+    void updateUser_whenRoleUnchanged_shouldNotBumpTokenVersion() {
+        User updatedUser = new User();
+        updatedUser.setRole("Customer"); // same as testUser's current role
+
+        when(userRepository.findById(1)).thenReturn(Optional.of(testUser));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.updateUser(1, updatedUser);
+
+        assertEquals("Customer", result.getRole());
+        assertEquals(0, result.getTokenVersion());
     }
 
     @Test

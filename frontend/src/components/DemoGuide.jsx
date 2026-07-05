@@ -1,6 +1,27 @@
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { useDemoMode } from '../App';
 
+// STEPS content is developer-authored, not user input, but is sanitized
+// anyway as defense-in-depth and for consistency with ModernAlert. The
+// allowlist covers every tag/attribute actually used across all STEPS
+// entries below (strong, br, div, span, em, code; inline style="").
+const sanitizeStepContent = (html) =>
+  DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['strong', 'br', 'div', 'span', 'em', 'code'],
+    ALLOWED_ATTR: ['style'],
+  });
+
+/**
+ * DemoGuide — onboarding overlay shown only in demo mode.
+ *
+ * Renders nothing unless useDemoMode() reports demoMode is true. On first
+ * load (when not previously dismissed) it shows a multi-step walkthrough
+ * modal after a short delay; dismissal is remembered in sessionStorage and
+ * collapses the guide to a floating "?" button that can reopen it.
+ * STEPS holds the static walkthrough content (rendered via
+ * dangerouslySetInnerHTML).
+ */
 const STEPS = [
   {
     title: 'Welcome to the Parking Reservation System',
@@ -215,7 +236,7 @@ export default function DemoGuide() {
           fontSize: '15px',
           lineHeight: '1.7',
         }}
-          dangerouslySetInnerHTML={{ __html: currentStep.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizeStepContent(currentStep.content) }}
         />
 
         {/* Progress dots */}

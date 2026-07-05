@@ -15,8 +15,14 @@ services:
       - "3080:80"          # Access at http://localhost:3080
     environment:
       - SPRING_PROFILES_ACTIVE=demo
-      - JWT_SECRET=DockerDemoSecretKeyForJWTTokenGeneration2024MustBeLong!
-      - ADMIN_DEFAULT_PASSWORD=Admin@123
+      # JWT_SECRET is REQUIRED and must come from your shell or a .env file
+      # (see .env.example) — it must never be a literal committed here.
+      # Compose's ${VAR:?err} syntax fails the run with a clear message
+      # instead of silently falling back to a known, public value.
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in a .env file or your shell before running docker compose (see .env.example)}
+      - ADMIN_DEFAULT_PASSWORD=${ADMIN_DEFAULT_PASSWORD:-Admin@123}
+      - RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY:?Set RECAPTCHA_SITE_KEY in a .env file or your shell (see .env.example)}
+      - RECAPTCHA_SECRET_KEY=${RECAPTCHA_SECRET_KEY:?Set RECAPTCHA_SECRET_KEY in a .env file or your shell (see .env.example)}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
       interval: 5s
