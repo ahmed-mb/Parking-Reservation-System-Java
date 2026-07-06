@@ -89,7 +89,7 @@ keyless OIDC signing tied to this repository's GitHub Actions identity.
 Verification:
 
 ```bash
-cosign verify ghcr.io/<owner>/parking-reservation-system:<tag> \
+cosign verify ghcr.io/<owner>/parking-reservation-system-java:<tag> \
   --certificate-identity-regexp 'github.com/<owner>/parking-reservation-system' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -98,7 +98,7 @@ The CycloneDX SBOM is attached to each image as a signed attestation:
 
 ```bash
 cosign download attestation \
-  ghcr.io/<owner>/parking-reservation-system@<digest>
+  ghcr.io/<owner>/parking-reservation-system-java@<digest>
 ```
 
 [cosign]: https://github.com/sigstore/cosign

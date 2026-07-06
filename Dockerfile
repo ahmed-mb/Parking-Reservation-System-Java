@@ -1,43 +1,24 @@
 # =============================================================================
-# Multi-stage Dockerfile for Parking Reservation System
+# Production Dockerfile for Parking Reservation System
 # =============================================================================
-# Stage 1: Build React frontend
-# Stage 2: Build Java backend (includes frontend static files)
-# Stage 3: Lightweight runtime image with Nginx + Java
+# The ONE production image: CI builds and Trivy-scans it, pushes it to GHCR,
+# and hal-server pulls and runs that exact artifact (build once, deploy that).
+# docker-compose builds the same file for local demos.
+#
+# Single-process: Spring Boot serves both the API and the built React static
+# files (copied into src/main/resources/static/ before packaging). TLS and
+# public routing are the host's job (Tailscale Funnel in the demo deployment).
 # =============================================================================
 
 # --- Stage 1: Build React Frontend ---
 FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/frontend
-
-# Copy package files first for better caching
 COPY frontend/package.json frontend/package-lock.json ./
-
-# Install dependencies
 RUN npm ci --production=false
-
-# Copy frontend source
 COPY frontend/ ./
-
-# ---------------------------------------------------------------------------
-# Build-time arguments for Vite.
-#
-# Vite reads VITE_* env vars at BUILD time and inlines them into the
-# JavaScript bundle (they are NOT looked up at runtime). Railway exposes the
-# service's environment variables as Docker build args automatically, but
-# only when the Dockerfile declares each ARG it wants to receive. Without
-# these two lines, npm run build below cannot see VITE_RECAPTCHA_SITE_KEY,
-# so the frontend falls back to the localhost-only test key hard-coded as
-# the App.jsx default and Google rejects the page on any real domain with
-# "ERROR for site owner: Invalid domain for site key".
-# ---------------------------------------------------------------------------
-ARG VITE_RECAPTCHA_SITE_KEY
-ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
-
-# Build for production. Demo mode is fine here too — the bundle still ships
-# a site key so the reCAPTCHA badge can render; the *backend* decides
-# whether to actually verify tokens based on the `demo.mode` property.
+# No VITE_* build args: runtime config (e.g. the reCAPTCHA site key) is
+# fetched from /api/config, so keys rotate without a rebuild.
 RUN npm run build
 
 # --- Stage 2: Build Java Backend ---
@@ -49,42 +30,36 @@ WORKDIR /app
 COPY pom.xml ./
 RUN mvn dependency:go-offline -B
 
-# Copy source code
 COPY src/ ./src/
 
-# Build the application (skip tests for faster build)
-RUN mvn clean package -DskipTests -B
+# Spring Boot automatically serves files from src/main/resources/static/
+COPY --from=frontend-build /app/frontend/dist/ ./src/main/resources/static/
 
-# --- Stage 3: Runtime Image ---
-FROM eclipse-temurin:17-jre-alpine AS runtime
+RUN mvn package -DskipTests -B
+
+# --- Stage 3: Lightweight Runtime ---
+FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-# Install nginx for serving frontend + reverse proxy
-RUN apk add --no-cache nginx
+# Run as a non-root user; the app writes nothing to disk (H2 is in-memory).
+RUN addgroup -S app && adduser -S app -G app
 
-# Copy the Spring Boot JAR
+# Copy the fat JAR (includes static frontend files)
 COPY --from=backend-build /app/target/*.jar app.jar
 
-# Copy the built frontend files
-COPY --from=frontend-build /app/frontend/dist /usr/share/nginx/html
+# Default profile; override via env-file / compose for other setups.
+ENV SPRING_PROFILES_ACTIVE=demo
 
-# Copy the loading page (served by Nginx while Spring Boot starts)
-COPY docker/loading.html /usr/share/nginx/html/loading.html
+EXPOSE 8080
 
-# Copy Nginx configuration
-COPY docker/nginx.conf /etc/nginx/nginx.conf
+# The app reads PORT itself (server.port=${PORT:8080} in the properties),
+# so the health check must probe the same value.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+  CMD wget -q --spider "http://127.0.0.1:${PORT:-8080}/actuator/health" || exit 1
 
-# Copy the entrypoint script
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+USER app
 
-# Expose port 80 (Nginx)
-EXPOSE 80
-
-# Health check
-HEALTHCHECK --interval=5s --timeout=3s --start-period=15s --retries=3 \
-  CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
-
-# Start both Nginx and Spring Boot
-ENTRYPOINT ["/entrypoint.sh"]
+# Exec form so the JVM is PID 1 and receives SIGTERM directly on stop.
+# -Xmx400m keeps the heap inside the small demo host's memory budget.
+ENTRYPOINT ["java", "-Xmx400m", "-jar", "app.jar"]

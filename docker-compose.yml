@@ -12,7 +12,7 @@ services:
     build: .
     container_name: parking-demo
     ports:
-      - "3080:80"          # Access at http://localhost:3080
+      - "3080:8080"        # Access at http://localhost:3080
     environment:
       - SPRING_PROFILES_ACTIVE=demo
       # JWT_SECRET is REQUIRED and must come from your shell or a .env file
