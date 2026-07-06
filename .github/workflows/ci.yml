@@ -76,21 +76,21 @@ jobs:
           TESTCONTAINERS_REUSE_ENABLE: 'true'
 
       - name: Upload backend coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: target/site/jacoco/
           retention-days: 7
 
       - name: Upload CycloneDX SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-cyclonedx
           path: target/bom.json
           retention-days: 30
 
       - name: Upload third-party license report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: third-party-licenses
           path: target/generated-sources/license/THIRD-PARTY.txt
@@ -131,7 +131,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload frontend coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -201,14 +201,14 @@ jobs:
         run: mvn -B package -DskipTests --file pom.xml
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: parking-system-jar
           path: target/*.jar
           retention-days: 7
 
       - name: Upload SBOM alongside the JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: parking-system-sbom
           path: target/bom.json
