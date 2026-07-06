@@ -2,9 +2,11 @@ name: CI
 
 # Cancel older runs of the same branch when a new push lands. Saves CI minutes
 # and avoids stale "passed" status checks coming back after the head moved.
+# EXCEPT on main: a main run may be mid-deploy, and cancelling a deploy
+# half-way is worse than letting it finish before the next one starts.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 on:
   push:
@@ -15,6 +17,8 @@ on:
 env:
   JAVA_VERSION: '17'
   NODE_VERSION: '20'
+  # GHCR image name must be lowercase; the repo name isn't, so spell it out.
+  IMAGE_NAME: ghcr.io/ahmed-mb/parking-reservation-system-java
 
 permissions:
   # Default: read everything, write nothing. Individual jobs request more
@@ -211,9 +215,11 @@ jobs:
           retention-days: 30
 
   # ----------------------------------------------------------------------
-  # Container scan: build the production Dockerfile, run Trivy against
-  # the resulting image, fail the workflow on any HIGH or CRITICAL CVE
-  # in OS packages or Java dependencies.
+  # Container image: build the production Dockerfile, run Trivy against
+  # the resulting image (fail on CRITICAL CVEs), and — on pushes to main
+  # only — publish the exact scanned image to GHCR. The deploy job below
+  # then ships that artifact by tag, so what runs in production is
+  # byte-for-byte what passed the scan (build once, deploy that).
   # ----------------------------------------------------------------------
   container-scan:
     name: Docker Image Scan (Trivy)
@@ -222,6 +228,8 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      # Needed to push the scanned image to ghcr.io on main.
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -276,3 +284,64 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-image'
+
+      # ------------------------------------------------------------------
+      # Publish the scanned image (main pushes only). These steps run only
+      # if every step above succeeded, so a CRITICAL CVE blocks the push.
+      # ------------------------------------------------------------------
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push scanned image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          # Retag the exact image Trivy just scanned — no rebuild.
+          docker tag parking-system:scan "$IMAGE_NAME:sha-$SHORT_SHA"
+          docker tag parking-system:scan "$IMAGE_NAME:latest"
+          docker push "$IMAGE_NAME:sha-$SHORT_SHA"
+          docker push "$IMAGE_NAME:latest"
+
+  # ----------------------------------------------------------------------
+  # Deploy: main pushes only, and ONLY after every job above has passed
+  # (needs: container-scan pulls in the whole graph transitively). The
+  # server side is an SSH forced command running deploy-parking.sh, which
+  # pulls the image tag we pass, health-checks the new container, and
+  # rolls back to the previous image if it fails to come up.
+  # ----------------------------------------------------------------------
+  deploy:
+    name: Deploy to hal-server
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [container-scan]
+    concurrency:
+      # Never overlap or cancel deploys; a second merge queues behind.
+      group: deploy-hal-server
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://hal-server-832612.tail27051c.ts.net/
+    steps:
+      - name: Trigger pull-based deploy over SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The key is bound to a forced command server-side; the tag
+          # argument reaches the script via SSH_ORIGINAL_COMMAND.
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+              "deploy sha-${GITHUB_SHA::7}"

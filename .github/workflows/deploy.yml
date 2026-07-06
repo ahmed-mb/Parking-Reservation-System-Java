@@ -1,29 +1,52 @@
-name: Deploy to hal-server
+name: Manual deploy to hal-server
+
+# MANUAL fallback only. The normal path is the `deploy` job at the end of
+# ci.yml, which runs on pushes to main strictly after tests, lint, secret
+# scan, and the container scan have all passed on that exact commit.
+#
+# Use this workflow from the Actions tab to redeploy an already-published
+# image — e.g. rolling back to a previous sha-XXXXXXX tag, or re-running a
+# deploy that failed for infrastructure reasons. It does NOT build or scan
+# anything; it can only ship tags that CI already pushed to GHCR.
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:        # lets you also deploy manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "GHCR image tag to deploy (e.g. latest or sha-abc1234)"
+        required: true
+        default: "latest"
 
-concurrency:                # never let two deploys overlap
-  group: deploy-hal-server
-  cancel-in-progress: false
+permissions:
+  contents: read
 
 jobs:
   deploy:
+    name: Deploy ${{ inputs.image_tag }}
     runs-on: ubuntu-latest
+    concurrency:
+      # Shares the group with ci.yml's deploy job: never overlap deploys.
+      group: deploy-hal-server
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://hal-server-832612.tail27051c.ts.net/
     steps:
-      - name: Trigger deploy over SSH
+      - name: Trigger pull-based deploy over SSH
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The key is bound to a forced command server-side; the tag
+          # argument reaches the script via SSH_ORIGINAL_COMMAND.
           ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes \
-              -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" deploy
+              -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+              "deploy $IMAGE_TAG"

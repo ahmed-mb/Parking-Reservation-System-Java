@@ -117,7 +117,7 @@ Use the `prod` Spring profile with `application-prod.properties` for SQL Server 
 
 ## Docker Deployment
 
-### Local Demo (with Nginx)
+### Local Demo
 Copy `.env.example` to `.env` and fill in `JWT_SECRET`, `ADMIN_DEFAULT_PASSWORD`,
 `RECAPTCHA_SITE_KEY`, and `RECAPTCHA_SECRET_KEY` first -- `docker-compose.yml`
 requires all four and will refuse to start without them.
@@ -125,11 +125,26 @@ requires all four and will refuse to start without them.
 docker compose --env-file .env up --build
 # Access at http://localhost:3080
 ```
+The image is single-process: Spring Boot serves both the API and the built
+React frontend. TLS and public routing are the host's job (the live demo
+uses Tailscale Funnel).
+
+### Continuous deployment (build once, deploy that)
+Every push to `main` runs the full CI pipeline (`.github/workflows/ci.yml`):
+tests, lint, secret scan, and a Trivy scan of the production image. Only if
+**everything** passes, that exact scanned image is pushed to
+`ghcr.io/ahmed-mb/parking-reservation-system-java` (tagged `latest` and
+`sha-<commit>`) and the `deploy` job tells the server to pull and run it.
+The server-side script ([scripts/deploy-parking.sh](scripts/deploy-parking.sh))
+health-checks the new container and **rolls back to the previous image** if
+it fails to come up. `.github/workflows/deploy.yml` is a manual fallback for
+redeploying any already-published tag (e.g. an instant rollback from the
+Actions tab).
 
 ### Signed release images
 Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds,
 tests, and publishes a cosign-signed image with an attached CycloneDX SBOM
-to `ghcr.io/<owner>/parking-reservation-system`. See [SECURITY.md](SECURITY.md#cryptographic-supply-chain)
+to `ghcr.io/<owner>/parking-reservation-system-java`. See [SECURITY.md](SECURITY.md#cryptographic-supply-chain)
 for the verification command.
 
 ## Documentation
