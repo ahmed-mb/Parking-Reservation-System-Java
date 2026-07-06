@@ -12,6 +12,14 @@ updates:
       - "java"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # Major framework upgrades (Spring Boot 4, Spring Security 7, ...)
+      # are deliberate migration projects, not weekly bumps — they need
+      # code changes and always fail CI as bare version bumps. NOTE:
+      # ignore rules also suppress Dependabot *security* PRs for majors;
+      # Trivy/CodeQL/npm-audit gates in CI still surface those CVEs.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # npm dependencies
   - package-ecosystem: "npm"
@@ -25,6 +33,11 @@ updates:
       - "javascript"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # Same rationale as maven: majors (React, vitest, ESLint, ...) are
+      # coordinated upgrades done by hand, not auto-bumps.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
