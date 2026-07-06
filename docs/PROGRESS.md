@@ -1,5 +1,10 @@
 # Progress Log
 
+> Historical development log, kept for provenance. Some entries describe
+> infrastructure that has since been replaced (e.g. Railway hosting — the app
+> now deploys to a self-hosted Docker host via the CI/CD pipeline described
+> in the [README](../README.md)).
+
 ## Phase 1: Initial Migration (Pre-Audit)
 
 The full Java Spring Boot + React project was built from scratch based on the ASP.NET original:
