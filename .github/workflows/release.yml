@@ -22,7 +22,12 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # OCI image references must be lowercase and this repo's name isn't, so
+  # spell it out — github.repository would inject the mixed-case name,
+  # which cosign rejects ("could not parse reference"). The metadata-action
+  # lowercases what it's given either way, so build/push are unaffected;
+  # this matters for the steps that assemble the reference by hand.
+  IMAGE_NAME: ahmed-mb/parking-reservation-system-java
 
 jobs:
   release:
@@ -101,8 +106,8 @@ jobs:
         # `cosign sign --yes` agrees to publish the signature to the public
         # transparency log (Rekor). The identity that signs the image is
         # GitHub Actions' OIDC token, which buyers can verify with:
-        #   cosign verify ghcr.io/<owner>/parking-reservation-system:<tag> \
-        #       --certificate-identity-regexp 'github.com/<owner>/parking-reservation-system' \
+        #   cosign verify ghcr.io/<owner>/parking-reservation-system-java:<tag> \
+        #       --certificate-identity-regexp 'github.com/<owner>/parking-reservation-system-java' \
         #       --certificate-oidc-issuer https://token.actions.githubusercontent.com
         run: |
           for tag in $(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' '); do
@@ -114,7 +119,7 @@ jobs:
       - name: Attach SBOM as an attestation
         # An attestation is a signed claim *about* the image (in this case:
         # "here is the SBOM for this digest"). Buyers can fetch it with:
-        #   cosign download attestation ghcr.io/.../parking-reservation-system@<digest>
+        #   cosign download attestation ghcr.io/.../parking-reservation-system-java@<digest>
         run: |
           cosign attest --yes \
             --predicate target/bom.json \
