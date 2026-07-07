@@ -54,3 +54,7 @@ spring-shell.log
 .vs/
 nul
 frontend/coverage/
+
+# AI-assistant workspace artifacts (local only)
+.claude/
+graphify-out/

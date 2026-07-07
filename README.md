@@ -1,5 +1,10 @@
 # Parking Reservation System
 
+[![CI](https://github.com/ahmed-mb/Parking-Reservation-System-Java/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmed-mb/Parking-Reservation-System-Java/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ahmed-mb/Parking-Reservation-System-Java/actions/workflows/codeql.yml/badge.svg)](https://github.com/ahmed-mb/Parking-Reservation-System-Java/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://hal-server-832612.tail27051c.ts.net/)
+
 A parking reservation system migrated from **ASP.NET Web Forms** to **Java Spring Boot** (backend) + **React** (frontend). The Java project is a functional clone of the original ASP.NET application -- same business logic, same table designs, same UI layout and styling.
 
 ## Live Demo
@@ -149,9 +154,9 @@ for the verification command.
 
 ## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) -- System design, file structure, tech decisions
-- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) -- Migration context, ASP.NET vs Java feature comparison
-- [PROGRESS.md](PROGRESS.md) -- Detailed log of the comparison audit and all fixes applied
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) -- System design, file structure, tech decisions
+- [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) -- Migration context, ASP.NET vs Java feature comparison
+- [docs/PROGRESS.md](docs/PROGRESS.md) -- Historical development log (audit findings and fixes)
 - [SECURITY.md](SECURITY.md) -- Supply-chain controls, pending manual security steps, vulnerability reporting
 
 ## Production Checklist
@@ -162,6 +167,14 @@ for the verification command.
 - [x] Docker containerization
 - [x] Content-Security-Policy header
 - [x] JWT revocation via per-user token version
-- [ ] Register production reCAPTCHA keys for the actual deployment domain
-- [ ] Configure SQL Server for persistent data
-- [ ] Set up custom domain with SSL
+- [x] Production reCAPTCHA keys registered for the demo domain
+- [x] HTTPS (Tailscale Funnel terminates TLS for the live demo)
+- [x] CI-gated continuous deployment with automatic rollback
+
+The demo intentionally uses in-memory H2 (data resets on each deploy); the
+`prod` profile with SQL Server exists for a persistent deployment if ever
+needed.
+
+## License
+
+[MIT](LICENSE)
