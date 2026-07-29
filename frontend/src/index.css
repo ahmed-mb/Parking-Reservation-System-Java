@@ -215,3 +215,120 @@ body::before {
 }
 .link-text a { color: #667eea; text-decoration: none; font-weight: 600; }
 .link-text a:hover { color: #f5576c; }
+
+/* ============================================================
+   Site Footer
+   Matches the dark gradient + purple accent theme of the app.
+   ============================================================ */
+.site-footer {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95));
+    backdrop-filter: blur(10px);
+    border-top: 3px solid #667eea;
+    box-shadow: 0 -5px 30px rgba(102, 126, 234, 0.2);
+    padding: 3rem 0 0;
+    margin-top: 3rem;
+    color: #d0d0d0;
+}
+
+.footer-content {
+    animation: fadeInUp 0.8s ease;
+}
+
+.footer-col {
+    margin-bottom: 2rem;
+}
+
+.footer-heading {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.2em;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: inline-block;
+}
+
+.footer-text {
+    font-size: 0.95em;
+    line-height: 1.7;
+    color: #b0b0b0;
+}
+
+.footer-contact {
+    font-size: 0.95em;
+    line-height: 2;
+    color: #b0b0b0;
+}
+
+.footer-contact li i {
+    color: #667eea;
+    width: 1.2em;
+    text-align: center;
+}
+
+/* Footer outline buttons */
+.footer-btn {
+    color: #667eea !important;
+    border-color: #667eea !important;
+    border-radius: 50px !important;
+    font-weight: 600 !important;
+    padding: 0.4rem 1.2rem !important;
+    transition: all 0.3s ease !important;
+    margin-top: 0.75rem;
+}
+
+.footer-btn:hover {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Social icon buttons */
+.footer-social {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+}
+
+.btn-social {
+    width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    border: 2px solid #667eea !important;
+    color: #667eea !important;
+    background: transparent !important;
+    padding: 0 !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-social:hover {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Footer divider & bottom bar */
+.footer-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 1rem 0;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-bottom: 1.5rem;
+}
+
+.footer-copyright {
+    font-size: 0.85em;
+    color: #888;
+    margin: 0;
+}
