@@ -15,6 +15,7 @@ import CurrentBooking from './components/CurrentBooking';
 import AdminPanel from './components/AdminPanel';
 import NotFound from './components/NotFound';
 import DemoGuide from './components/DemoGuide';
+import Footer from './components/Footer';
 
 // ---------------------------------------------------------------------------
 // Demo-mode context
@@ -90,6 +91,7 @@ function AppRoutes() {
           />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <Footer />
       </div>
     </Router>
   );
