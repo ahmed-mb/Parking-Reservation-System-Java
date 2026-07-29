@@ -91,8 +91,8 @@ function AppRoutes() {
           />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <Footer />
       </div>
+      <Footer />
     </Router>
   );
 }
