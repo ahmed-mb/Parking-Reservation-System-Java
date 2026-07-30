@@ -219,8 +219,10 @@ body::before {
 /* ============================================================
    Site Footer
    Matches the dark gradient + purple accent theme of the app.
+   Full width — the inner .container keeps content centred.
    ============================================================ */
 .site-footer {
+    width: 100%;
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95));
     backdrop-filter: blur(10px);
     border-top: 3px solid #667eea;
