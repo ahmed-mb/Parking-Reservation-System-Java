@@ -219,16 +219,25 @@ body::before {
 /* ============================================================
    Site Footer
    Matches the dark gradient + purple accent theme of the app.
-   Full width — the inner .container keeps content centred.
+   Full-width background (like the fixed-top navbar) — the inner
+   .container keeps the content centred and constrained.
    ============================================================ */
 .site-footer {
+    /* Span the full viewport width, matching the navbar behaviour.
+       width: 100% is relative to the containing block; we also set
+       left/right to 0 (requires position: relative) so the footer
+       background always reaches the edges regardless of any parent
+       constraint that might sneak in from a layout wrapper. */
+    position: relative;
+    left: 0;
+    right: 0;
     width: 100%;
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95));
     backdrop-filter: blur(10px);
     border-top: 3px solid #667eea;
     box-shadow: 0 -5px 30px rgba(102, 126, 234, 0.2);
     padding: 3rem 0 0;
-    margin-top: 3rem;
+    margin: 3rem 0 0;
     color: #d0d0d0;
 }
 
