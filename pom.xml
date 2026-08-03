@@ -27,7 +27,7 @@
         <!-- Pinned versions for plugins added in the production-readiness pass.
              Bumping these is a deliberate operation; Dependabot will open PRs. -->
         <testcontainers.version>1.20.4</testcontainers.version>
-        <cyclonedx.version>2.9.2</cyclonedx.version>
+        <cyclonedx.version>2.9.3</cyclonedx.version>
         <license.plugin.version>2.7.1</license.plugin.version>
 
         <!--
