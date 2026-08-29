@@ -127,7 +127,7 @@ jobs:
             "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
 
       - name: Create GitHub Release with JAR and SBOM
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: ${{ github.ref_name }}
           generate_release_notes: true
